@@ -157,9 +157,13 @@ class LoginPoizkus(Base):
 
     id = Column(Integer, primary_key=True)
     ip = Column(String, nullable=False)
+    uporabnisko_ime = Column(String, nullable=True)
     cas = Column(DateTime(timezone=True), nullable=False)
 
-    __table_args__ = (Index("ix_login_poskusi_ip_cas", "ip", "cas"),)
+    __table_args__ = (
+        Index("ix_login_poskusi_ip_cas", "ip", "cas"),
+        Index("ix_login_poskusi_user_cas", "uporabnisko_ime", "cas"),
+    )
 
 
 class ClanVloga(Base):

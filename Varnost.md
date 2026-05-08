@@ -1,6 +1,6 @@
 # Varnostni pregled – S59DGO Upravljanje Članstva
 
-*Datum pregleda: 2026-02-23 | Posodobljeno: 2026-03-20 (v1.26)*
+*Datum pregleda: 2026-02-23 | Posodobljeno: 2026-05-08 (v1.27)*
 
 ---
 
@@ -76,6 +76,10 @@ Od različice v1.3 so bile odpravljene CSRF zaščita, politika gesel, validacij
 | Nadgradnja starlette 0.52.1 – odpravljen Range header parsing DoS + multipart forms DoS | ✅ | v1.26 |
 | Nadgradnja python-multipart 0.0.22 – odpravljen path traversal v File filename | ✅ | v1.26 |
 | Nadgradnja FastAPI 0.115.6 → 0.135.1 – združljivost s starlette 0.52.1 | ✅ | v1.26 |
+| CSRF token dodan v obrazec za brisanje uporabnika (`uporabniki/seznam.html`) – popravek hrošča, ki je preprečeval brisanje | ✅ | v1.27 |
+| Odjava spremenjena iz GET v POST z CSRF zaščito – preprečuje prisilno odjavo prek `<img src="/logout">` | ✅ | v1.27 |
+| Rate limiting razširjen na profil operacije: `/profil/geslo`, `/profil/2fa-potrdi`, `/profil/2fa-onemogoči` | ✅ | v1.27 |
+| Per-username rate limiting: `login_poskusi` tabela dobi stolpec `uporabnisko_ime`; zaklepanje velja za IP in račun | ✅ | v1.27 |
 
 ---
 
@@ -113,10 +117,11 @@ Od različice v1.3 so bile odpravljene CSRF zaščita, politika gesel, validacij
 #### V2. ~~Šibka politika gesel~~ ✅ IMPLEMENTIRANO (v1.3)
 - `preveri_zahteve_gesla()` v `app/auth.py`: min. 14 znakov, mali/veliki znaki, številka, posebni znak.
 
-#### V3. ~~Rate limiting ni trajen~~ ✅ IMPLEMENTIRANO (v1.13)
-- Nova tabela `login_poskusi` (ip, cas) v SQLite; `_check_rate_limit` in `_record_failed_login` uporabljata DB.
-- Stari vnosi se samodejno čistijo ob vsakem klicu `_check_rate_limit`.
-- Alembic migracija `003_login_poskusi.py`.
+#### V3. ~~Rate limiting ni trajen~~ ✅ IMPLEMENTIRANO (v1.13, razširjeno v1.27)
+- Nova tabela `login_poskusi` (ip, uporabnisko_ime, cas) v SQLite; `check_rate_limit` in `record_failed_attempt` v `app/rate_limit.py`.
+- Stari vnosi se samodejno čistijo ob vsakem klicu. Zaklepanje velja za IP **in** username (10 neuspelih v 15 min).
+- Alembic migracije `003_login_poskusi.py` in `009_login_poskusi_username.py`.
+- Od v1.27 pokrita tudi: sprememba gesla, potrditev 2FA, onemogočanje 2FA.
 
 ---
 

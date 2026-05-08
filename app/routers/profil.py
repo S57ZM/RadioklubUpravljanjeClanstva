@@ -13,6 +13,7 @@ from ..models import Uporabnik, ZaupljivaNaprava
 from ..auth import require_login, hash_geslo, preveri_geslo, preveri_zahteve_gesla
 from ..csrf import get_csrf_token, csrf_protect
 from ..audit_log import log_akcija
+from ..rate_limit import check_rate_limit, record_failed_attempt
 
 router = APIRouter(prefix="/profil")
 templates = Jinja2Templates(directory="app/templates")
@@ -93,6 +94,9 @@ async def spremeni_geslo(
     if redirect:
         return redirect
 
+    ip = request.client.host if request.client else "unknown"
+    uporabnisko_ime = user.get("uporabnisko_ime")
+
     u = db.query(Uporabnik).filter(Uporabnik.id == user["id"]).first()
     if not u:
         return RedirectResponse(url="/logout", status_code=302)
@@ -109,7 +113,11 @@ async def spremeni_geslo(
             },
         )
 
+    if not check_rate_limit(ip, db, uporabnisko_ime):
+        return vrni_napako("Preveč neuspešnih poskusov. Počakajte 15 minut.")
+
     if not preveri_geslo(staro_geslo, u.geslo_hash):
+        record_failed_attempt(ip, db, uporabnisko_ime)
         return vrni_napako("Trenutno geslo ni pravilno.")
 
     if novo_geslo != novo_geslo2:
@@ -124,7 +132,7 @@ async def spremeni_geslo(
 
     log_akcija(db, user["ime"], "geslo_spremenjeno",
                f"Uporabnik {u.uporabnisko_ime} spremenil geslo",
-               ip=request.client.host if request.client else None)
+               ip=ip)
 
     return RedirectResponse(url="/profil?geslo=1", status_code=302)
 
@@ -180,6 +188,9 @@ async def tfa_potrdi(
     if redirect:
         return redirect
 
+    ip = request.client.host if request.client else "unknown"
+    uporabnisko_ime = user.get("uporabnisko_ime")
+
     skrivnost = request.session.get("_2fa_nova_skrivnost")
     if not skrivnost:
         return RedirectResponse(url="/profil", status_code=302)
@@ -188,16 +199,25 @@ async def tfa_potrdi(
     if not u:
         return RedirectResponse(url="/logout", status_code=302)
 
+    if not check_rate_limit(ip, db, uporabnisko_ime):
+        klub_ime = getattr(request.state, "klub_ime", "") or ""
+        qr_svg = _generiraj_qr_svg(skrivnost, u.uporabnisko_ime, klub_ime)
+        return templates.TemplateResponse(
+            request, "profil/2fa-nastavi.html",
+            {"request": request, "user": user, "u": u, "qr_svg": qr_svg,
+             "skrivnost": skrivnost, "napaka": "Preveč neuspešnih poskusov. Počakajte 15 minut."},
+        )
+
     if pyotp.TOTP(skrivnost).verify(koda.strip(), valid_window=1):
         u.totp_skrivnost = skrivnost
         u.totp_aktiven = True
         db.commit()
         request.session.pop("_2fa_nova_skrivnost", None)
         log_akcija(db, user["ime"], "2fa_vklop",
-                   f"Uporabnik {u.uporabnisko_ime} vklopil 2FA",
-                   ip=request.client.host if request.client else None)
+                   f"Uporabnik {u.uporabnisko_ime} vklopil 2FA", ip=ip)
         return RedirectResponse(url="/profil?2fa=1", status_code=302)
 
+    record_failed_attempt(ip, db, uporabnisko_ime)
     # Napaka – QR regeneriramo iz iste skrivnosti
     klub_ime = getattr(request.state, "klub_ime", "") or ""
     qr_svg = _generiraj_qr_svg(skrivnost, u.uporabnisko_ime, klub_ime)
@@ -227,9 +247,19 @@ async def tfa_onemogoči(
     if redirect:
         return redirect
 
+    ip = request.client.host if request.client else "unknown"
+    uporabnisko_ime = user.get("uporabnisko_ime")
+
     u = db.query(Uporabnik).filter(Uporabnik.id == user["id"]).first()
     if not u:
         return RedirectResponse(url="/logout", status_code=302)
+
+    if not check_rate_limit(ip, db, uporabnisko_ime):
+        return templates.TemplateResponse(
+            request, "profil/index.html",
+            {"request": request, "user": user, "u": u,
+             "napaka_2fa": "Preveč neuspešnih poskusov. Počakajte 15 minut.", "zaupljive_naprave": []},
+        )
 
     if u.totp_skrivnost and pyotp.TOTP(u.totp_skrivnost).verify(koda.strip(), valid_window=1):
         u.totp_skrivnost = None
@@ -238,12 +268,12 @@ async def tfa_onemogoči(
         db.query(ZaupljivaNaprava).filter(ZaupljivaNaprava.uporabnik_id == u.id).delete()
         db.commit()
         log_akcija(db, user["ime"], "2fa_izklop",
-                   f"Uporabnik {u.uporabnisko_ime} izklopil 2FA",
-                   ip=request.client.host if request.client else None)
+                   f"Uporabnik {u.uporabnisko_ime} izklopil 2FA", ip=ip)
         response = RedirectResponse(url="/profil?2fa_off=1", status_code=302)
         response.delete_cookie("_2fa_device")
         return response
 
+    record_failed_attempt(ip, db, uporabnisko_ime)
     return templates.TemplateResponse(
         request,
         "profil/index.html",

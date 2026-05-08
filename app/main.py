@@ -27,6 +27,7 @@ from .models import Base, Uporabnik, Nastavitev, ZaupljivaNaprava, LoginPoizkus,
 from .auth import hash_geslo, preveri_geslo
 from .csrf import get_csrf_token, csrf_protect
 from .audit_log import log_akcija
+from .rate_limit import check_rate_limit, record_failed_attempt
 from .email_predloge_seed import seed_predloge
 from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, obvestila as obvestila_router
 
@@ -36,8 +37,8 @@ logger = logging.getLogger(__name__)
 # Varnostne nastavitve
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "1.26"
-APP_RELEASE_DATE = "2026-03-20"
+APP_VERSION = "1.27"
+APP_RELEASE_DATE = "2026-05-08"
 
 # Preberi LICENSE ob zagonu (enkrat, ne ob vsaki zahtevi)
 try:
@@ -72,8 +73,6 @@ PRIVZETE_NASTAVITVE = {
     "smtp_od": ("", "Naslov pošiljatelja"),
 }
 
-_MAX_ATTEMPTS = 10        # max neuspešnih prijav
-_LOCKOUT_SECONDS = 900    # zaklepanje 15 minut
 _INACTIVITY_SECONDS = 30 * 60  # iztok seje ob neaktivnosti (30 min)
 _MAX_BODY_BYTES = 1 * 1024 * 1024  # max velikost normalnega POST zahtevka (1 MB)
 
@@ -182,23 +181,6 @@ class KlubContextMiddleware(BaseHTTPMiddleware):
 
 def _device_token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
-
-
-def _check_rate_limit(ip: str, db: Session) -> bool:
-    """Vrne True če je IP dovoljen, False če je zaklenjen. Sproti čisti stare vnose."""
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_LOCKOUT_SECONDS)
-    db.query(LoginPoizkus).filter(LoginPoizkus.cas < cutoff).delete(synchronize_session=False)
-    db.commit()
-    count = db.query(LoginPoizkus).filter(
-        LoginPoizkus.ip == ip,
-        LoginPoizkus.cas >= cutoff,
-    ).count()
-    return count < _MAX_ATTEMPTS
-
-
-def _record_failed_login(ip: str, db: Session) -> None:
-    db.add(LoginPoizkus(ip=ip, cas=datetime.now(timezone.utc)))
-    db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +351,7 @@ async def login(
     ip = request.client.host if request.client else "unknown"
 
     # Rate limiting
-    if not _check_rate_limit(ip, db):
+    if not check_rate_limit(ip, db, uporabnisko_ime):
         logger.warning(f"Preveč poskusov prijave z IP {ip}")
         return templates.TemplateResponse(
             request,
@@ -433,7 +415,7 @@ async def login(
         log_akcija(db, uporabnisko_ime, "login_ok", f"Prijava: {uporabnisko_ime}", ip=ip)
         return RedirectResponse(url="/clani", status_code=302)
 
-    _record_failed_login(ip, db)
+    record_failed_attempt(ip, db, uporabnisko_ime)
     logger.warning(f"Neuspešna prijava: {uporabnisko_ime} ({ip})")
     log_akcija(db, uporabnisko_ime, "login_fail", f"Neuspešna prijava: {uporabnisko_ime}", ip=ip)
     return templates.TemplateResponse(
@@ -464,7 +446,7 @@ async def login_2fa(
 
     ip = request.client.host if request.client else "unknown"
 
-    if not _check_rate_limit(ip, db):
+    if not check_rate_limit(ip, db, uporabnisko_ime):
         return templates.TemplateResponse(
             request,
             "login-2fa.html",
@@ -508,7 +490,7 @@ async def login_2fa(
             log_akcija(db, uporabnisko_ime, "login_2fa_zaupljiva_nova", "Nova zaupljiva naprava shranjena", ip=ip)
         return response
 
-    _record_failed_login(ip, db)
+    record_failed_attempt(ip, db, uporabnisko_ime)
     logger.warning(f"Napačna 2FA koda: {uporabnisko_ime} ({ip})")
     log_akcija(db, uporabnisko_ime, "login_2fa_napaka", f"Napačna 2FA koda: {uporabnisko_ime}", ip=ip)
     return templates.TemplateResponse(
@@ -518,17 +500,17 @@ async def login_2fa(
     )
 
 
-@app.get("/logout")
-async def logout(request: Request) -> RedirectResponse:
+@app.post("/logout")
+async def logout(
+    request: Request,
+    _csrf: None = Depends(csrf_protect),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
     uporabnik_info = request.session.get("uporabnik")
     username = uporabnik_info.get("uporabnisko_ime") if uporabnik_info else None
     ip = request.client.host if request.client else None
     request.session.clear()
-    db = SessionLocal()
-    try:
-        log_akcija(db, username, "logout", ip=ip)
-    finally:
-        db.close()
+    log_akcija(db, username, "logout", ip=ip)
     # Zaupljiva naprava (_2fa_device piškotek) se ob odjavi NE briše –
     # velja 30 dni ne glede na odjave. Uporabnik jo prekliče prek
     # Moj profil → Odjavi vse naprave ali ob onemogočanju 2FA.

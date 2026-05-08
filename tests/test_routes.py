@@ -73,7 +73,7 @@ def test_verzijska_znacka_vsebuje_verzijo(client, db):
     _login(client, db)
     resp = client.get("/clani")
     assert resp.status_code == 200
-    assert "1.26" in resp.text
+    assert "1.27" in resp.text
 
 
 def test_get_clani_brez_seje(client):
@@ -773,3 +773,143 @@ def test_audit_log_nastavitve_urejene(client, db):
     assert resp.status_code == 302
     log = db.query(AuditLog).filter(AuditLog.akcija == "nastavitve_urejene").first()
     assert log is not None
+
+
+# ---------------------------------------------------------------------------
+# v1.27: H1 – Logout POST + CSRF
+# ---------------------------------------------------------------------------
+
+def test_logout_get_vrne_405(client, db):
+    """GET /logout mora vrniti 405 – logout je samo POST."""
+    _login(client, db)
+    resp = client.get("/logout", follow_redirects=False)
+    assert resp.status_code == 405
+
+
+def test_logout_post_uspesen(client, db):
+    """POST /logout z veljavnim CSRF tokenom odjavlja in preusmeri na /login."""
+    token = _login_csrf(client, db)
+    resp = client.post("/logout", data={"csrf_token": token}, follow_redirects=False)
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["location"]
+
+
+def test_logout_post_brez_csrf_zavrne(client, db):
+    """POST /logout brez CSRF tokena vrne 403."""
+    _login(client, db)
+    resp = client.post("/logout", data={}, follow_redirects=False)
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# v1.27: C1 – CSRF token v obrazcu za brisanje uporabnika
+# ---------------------------------------------------------------------------
+
+def test_csrf_token_v_izbrisi_formi_uporabnikov(client, db):
+    """Stran /uporabniki vsebuje CSRF token v obrazcu za brisanje."""
+    _login(client, db)
+    # Dodamo drugega uporabnika, ki ga admin vidi in mu se prikaže gumb za brisanje
+    from app.models import Uporabnik as UporabnikModel
+    from app.auth import hash_geslo as hg
+    drugi = UporabnikModel(
+        uporabnisko_ime="drugi",
+        geslo_hash=hg("Veljavno1234!ab"),
+        vloga="bralec",
+        aktiven=True,
+    )
+    db.add(drugi)
+    db.commit()
+    resp = client.get("/uporabniki")
+    assert resp.status_code == 200
+    assert 'name="csrf_token"' in resp.text
+    assert 'action="/uporabniki/' in resp.text
+    assert "izbrisi" in resp.text
+
+
+def test_izbrisi_uporabnika_z_csrf(client, db):
+    """Admin uspešno izbriše drugega uporabnika z veljavnim CSRF tokenom."""
+    token = _login_csrf(client, db, vloga="admin")
+    from app.models import Uporabnik as UporabnikModel
+    from app.auth import hash_geslo as hg
+    brisanec = UporabnikModel(
+        uporabnisko_ime="brisanec",
+        geslo_hash=hg("Veljavno1234!ab"),
+        vloga="bralec",
+        aktiven=True,
+    )
+    db.add(brisanec)
+    db.commit()
+    db.refresh(brisanec)
+    uid = brisanec.id
+
+    resp = client.post(f"/uporabniki/{uid}/izbrisi", data={"csrf_token": token},
+                       follow_redirects=False)
+    assert resp.status_code == 302
+    assert db.query(UporabnikModel).filter(UporabnikModel.id == uid).first() is None
+
+
+# ---------------------------------------------------------------------------
+# v1.27: H2 – Rate limiting na profil operacijah
+# ---------------------------------------------------------------------------
+
+def test_rate_limit_profil_geslo(client, db):
+    """Po 10+ neuspelih poskusih po username-u vrne sporočilo o zaklepanju."""
+    from datetime import datetime, timezone
+    from app.models import LoginPoizkus
+    token = _login_csrf(client, db, vloga="admin")
+    # Simuliramo 10 neuspelih poskusov za username "testuser2" z drugega IP
+    for _ in range(10):
+        db.add(LoginPoizkus(
+            ip="1.2.3.4",
+            uporabnisko_ime="testuser2",
+            cas=datetime.now(timezone.utc),
+        ))
+    db.commit()
+    resp = client.post(
+        "/profil/geslo",
+        data={
+            "csrf_token": token,
+            "staro_geslo": "Veljavno1234!ab",
+            "novo_geslo": "NovoGeslo5678!xy",
+            "novo_geslo2": "NovoGeslo5678!xy",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 200
+    assert "Preveč" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# v1.27: H3 – Per-username rate limiting pri prijavi
+# ---------------------------------------------------------------------------
+
+def test_login_rate_limit_per_username(client, db):
+    """10 neuspelih poskusov za isti username zaklene račun ne glede na IP."""
+    from datetime import datetime, timezone
+    from app.models import Uporabnik as UporabnikModel, LoginPoizkus
+    from app.auth import hash_geslo as hg
+    u = UporabnikModel(
+        uporabnisko_ime="tarča",
+        geslo_hash=hg("Veljavno1234!ab"),
+        vloga="bralec",
+        aktiven=True,
+    )
+    db.add(u)
+    db.commit()
+    for _ in range(10):
+        db.add(LoginPoizkus(
+            ip="9.9.9.9",
+            uporabnisko_ime="tarča",
+            cas=datetime.now(timezone.utc),
+        ))
+    db.commit()
+
+    resp = client.get("/login")
+    csrf = re.search(r'<input[^>]*name="csrf_token"[^>]*value="([^"]+)"', resp.text).group(1)
+    resp = client.post(
+        "/login",
+        data={"csrf_token": csrf, "uporabnisko_ime": "tarča", "geslo": "Veljavno1234!ab"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 200
+    assert "Preveč" in resp.text
