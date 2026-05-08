@@ -1,6 +1,6 @@
 # Varnostni pregled – S59DGO Upravljanje Članstva
 
-*Datum pregleda: 2026-02-23 | Posodobljeno: 2026-05-08 (v1.27)*
+*Datum pregleda: 2026-02-23 | Posodobljeno: 2026-05-08 (v1.28)*
 
 ---
 
@@ -76,6 +76,8 @@ Od različice v1.3 so bile odpravljene CSRF zaščita, politika gesel, validacij
 | Nadgradnja starlette 0.52.1 – odpravljen Range header parsing DoS + multipart forms DoS | ✅ | v1.26 |
 | Nadgradnja python-multipart 0.0.22 – odpravljen path traversal v File filename | ✅ | v1.26 |
 | Nadgradnja FastAPI 0.115.6 → 0.135.1 – združljivost s starlette 0.52.1 | ✅ | v1.26 |
+| Nadgradnja python-multipart 0.0.22 → 0.0.27 – odpravljen DoS prek prevelikih multipart preambul/epilogov | ✅ | v1.28 |
+| Nadgradnja pytest 8.3.4 → 9.0.3 – odpravljena ranljivost tmpdir na UNIX (dev odvisnost) | ✅ | v1.28 |
 | CSRF token dodan v obrazec za brisanje uporabnika (`uporabniki/seznam.html`) – popravek hrošča, ki je preprečeval brisanje | ✅ | v1.27 |
 | Odjava spremenjena iz GET v POST z CSRF zaščito – preprečuje prisilno odjavo prek `<img src="/logout">` | ✅ | v1.27 |
 | Rate limiting razširjen na profil operacije: `/profil/geslo`, `/profil/2fa-potrdi`, `/profil/2fa-onemogoči` | ✅ | v1.27 |
