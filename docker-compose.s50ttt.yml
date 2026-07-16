@@ -1,0 +1,21 @@
+﻿services:
+  clanstvo:
+    build:
+      context: .
+    container_name: radioklub-clanstvo-zrs-test
+    ports:
+      - "${BIND_IP:-0.0.0.0}:${APP_PORT:-8021}:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_GESLO=${ADMIN_GESLO}
+      - KLUB_IME=${KLUB_IME:-TEST Radioklub Sevnica}
+      - KLUB_OZNAKA=${KLUB_OZNAKA:-S50TTT-TEST}
+      - OKOLJE=produkcija
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/login')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
