@@ -14,7 +14,7 @@ from alembic import command as alembic_command
 import pyotp
 from fastapi import FastAPI, Request, Form, Depends
 from sqlalchemy.orm import Session
-from fastapi.responses import RedirectResponse, HTMLResponse, Response
+from fastapi.responses import RedirectResponse, HTMLResponse, Response, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -30,6 +30,8 @@ from .audit_log import log_akcija
 from .rate_limit import check_rate_limit, record_failed_attempt
 from .email_predloge_seed import seed_predloge
 from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, zrs_clanarine, obvestila as obvestila_router
+from .routers import dostop
+from .routers.dostop import najdi_uporabnika_za_prijavo
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Varnostne nastavitve
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "1.29-s50ttt"
+APP_VERSION = "1.30-s50ttt"
 APP_RELEASE_DATE = "2026-07-17"
 
 # Preberi LICENSE ob zagonu (enkrat, ne ob vsaki zahtevi)
@@ -128,7 +130,7 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 class InactivityTimeoutMiddleware(BaseHTTPMiddleware):
     """Odjavi uporabnika po 30 minutah neaktivnosti."""
 
-    _SKIP_PATHS_EXACT = {"/login", "/login/2fa", "/logout", "/health"}
+    _SKIP_PATHS_EXACT = {"/login", "/login/2fa", "/logout", "/health", "/dostop/prosnja", "/manifest.webmanifest", "/service-worker.js"}
     _SKIP_PATHS_PREFIX = ("/static",)
 
     async def dispatch(self, request: Request, call_next):
@@ -309,6 +311,7 @@ app.include_router(clani.router)
 app.include_router(clanarine.router)
 app.include_router(izvoz.router)
 app.include_router(uporabniki.router)
+app.include_router(dostop.router)
 app.include_router(nastavitve.router)
 app.include_router(profil.router)
 app.include_router(aktivnosti.router)
@@ -382,12 +385,7 @@ async def login(
             {"request": request, "napaka": "Preveč neuspešnih poskusov. Počakajte 15 minut."},
         )
 
-    u = (
-        db.query(Uporabnik)
-        .filter(
-            Uporabnik.uporabnisko_ime == uporabnisko_ime,
-            Uporabnik.aktiven == True,
-        )
+    u = najdi_uporabnika_za_prijavo(db, uporabnisko_ime)
         .first()
     )
 
@@ -417,6 +415,7 @@ async def login(
                         "ime": u.ime_priimek or u.uporabnisko_ime,
                         "vloga": u.vloga,
                         "uporabnisko_ime": u.uporabnisko_ime,
+                        "clan_id": u.clan_id,
                     }
                     log_akcija(db, uporabnisko_ime, "login_2fa_zaupljiva",
                                f"Prijava z zaupljivo napravo: {uporabnisko_ime}", ip=ip)
@@ -433,6 +432,7 @@ async def login(
             "ime": u.ime_priimek or u.uporabnisko_ime,
             "vloga": u.vloga,
             "uporabnisko_ime": u.uporabnisko_ime,
+            "clan_id": u.clan_id,
         }
         logger.info(f"Uspešna prijava: {uporabnisko_ime} ({ip})")
         log_akcija(db, uporabnisko_ime, "login_ok", f"Prijava: {uporabnisko_ime}", ip=ip)
@@ -489,6 +489,7 @@ async def login_2fa(
             "ime": u.ime_priimek or u.uporabnisko_ime,
             "vloga": u.vloga,
             "uporabnisko_ime": u.uporabnisko_ime,
+            "clan_id": u.clan_id,
         }
         logger.info(f"Uspešna 2FA prijava: {uporabnisko_ime} ({ip})")
         log_akcija(db, uporabnisko_ime, "login_ok", f"Prijava (2FA): {uporabnisko_ime}", ip=ip)

@@ -144,6 +144,25 @@ class Uporabnik(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+
+class DostopnaProsnja(Base):
+    """Prošnja aktivnega člana za uporabniški dostop."""
+
+    __tablename__ = "dostopne_prosnje"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("clani.id"), nullable=False, index=True)
+    uporabnisko_ime = Column(String, nullable=False, index=True)
+    geslo_hash = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="caka", index=True)
+    ip = Column(String, nullable=True)
+    opomba = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    obravnavano_at = Column(DateTime(timezone=True), nullable=True)
+    obravnaval = Column(String, nullable=True)
+
+    clan = relationship("Clan")
+
 class Nastavitev(Base):
     __tablename__ = "nastavitve"
 

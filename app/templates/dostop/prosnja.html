@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d3b66">
+  <title>Prošnja za dostop – {{ request.state.klub_oznaka or 'Radio klub' }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+</head>
+<body class="bg-light">
+  <div class="container py-4" style="max-width:680px">
+    <div class="card shadow">
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <i class="bi bi-person-plus-fill text-primary" style="font-size:3rem"></i>
+          <h3 class="mt-2">Prošnja za dostop</h3>
+          <p class="text-muted mb-0">
+            {{ request.state.klub_oznaka or 'Radio klub' }} – članska aplikacija
+          </p>
+        </div>
+
+        {% if napaka %}
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>{{ napaka }}
+        </div>
+        {% endif %}
+
+        {% if uspeh %}
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle me-2"></i>{{ uspeh }}
+        </div>
+        <div class="text-center">
+          <a class="btn btn-primary" href="/login">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Nazaj na prijavo
+          </a>
+        </div>
+        {% else %}
+        <form method="post" action="/dostop/prosnja">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+
+          <div class="mb-3">
+            <label class="form-label">E-pošta ali klicni znak</label>
+            <input
+              type="text"
+              name="identifikator"
+              class="form-control"
+              value="{{ vrednosti.identifikator or '' }}"
+              autocomplete="username"
+              required
+              autofocus
+            >
+            <div class="form-text">
+              Podatek se mora ujemati z aktivnim članom v evidenci.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Želeno uporabniško ime</label>
+            <input
+              type="text"
+              name="uporabnisko_ime"
+              class="form-control"
+              value="{{ vrednosti.uporabnisko_ime or '' }}"
+              minlength="3"
+              maxlength="50"
+              pattern="[A-Za-z0-9._-]+"
+              autocomplete="username"
+              required
+            >
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Geslo</label>
+            <input
+              type="password"
+              name="geslo"
+              class="form-control"
+              minlength="14"
+              autocomplete="new-password"
+              required
+            >
+            <div class="form-text">
+              Najmanj 14 znakov, velika in mala črka, številka ter posebni znak.
+              Administrator gesla ne bo mogel videti.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Ponovite geslo</label>
+            <input
+              type="password"
+              name="geslo_ponovi"
+              class="form-control"
+              minlength="14"
+              autocomplete="new-password"
+              required
+            >
+          </div>
+
+          <div class="form-check mb-4">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="soglasje"
+              value="da"
+              id="soglasje"
+              required
+            >
+            <label class="form-check-label" for="soglasje">
+              Potrjujem, da prosim za dostop do svojega članskega zapisa.
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-send me-2"></i>Pošlji prošnjo administratorju
+          </button>
+        </form>
+
+        <div class="text-center mt-3">
+          <a href="/login" class="text-decoration-none">
+            <i class="bi bi-arrow-left me-1"></i>Nazaj na prijavo
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/pwa-install.js" defer></script>
+</body>
+</html>
