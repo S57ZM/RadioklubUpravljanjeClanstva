@@ -134,6 +134,8 @@ class Uporabnik(Base):
     __tablename__ = "uporabniki"
 
     id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("clani.id"), nullable=True, unique=True, index=True)
+    clan = relationship("Clan")
     uporabnisko_ime = Column(String, unique=True, nullable=False, index=True)
     geslo_hash = Column(String, nullable=False)
     vloga = Column(String, nullable=False, default="bralec")
