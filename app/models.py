@@ -35,9 +35,7 @@ VLOGE_CLANOV_PRIVZETO = [
     "Častni član",
 ]
 
-VLOGE = ["admin", "urednik", "bralec"]
-
-
+VLOGE = ["admin", "predsednik", "podpredsednik", "blagajnik"]
 class Clan(Base):
     __tablename__ = "clani"
 
@@ -138,7 +136,7 @@ class Uporabnik(Base):
     clan = relationship("Clan")
     uporabnisko_ime = Column(String, unique=True, nullable=False, index=True)
     geslo_hash = Column(String, nullable=False)
-    vloga = Column(String, nullable=False, default="bralec")
+    vloga = Column(String, nullable=False, default="blagajnik")
     ime_priimek = Column(String, nullable=True)
     aktiven = Column(Boolean, default=True, nullable=False)
     totp_skrivnost = Column(String, nullable=True)

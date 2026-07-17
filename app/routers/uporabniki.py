@@ -87,7 +87,7 @@ async def nov_shrani(
     uporabnisko_ime: str = Form(...),
     geslo: str = Form(...),
     ime_priimek: str = Form(""),
-    vloga: str = Form("bralec"),
+    vloga: str = Form("blagajnik"),
     db: Session = Depends(get_db),
     _csrf: None = Depends(csrf_protect),
 ) -> Response:
@@ -127,7 +127,7 @@ async def nov_shrani(
         )
 
     if vloga not in VLOGE:
-        vloga = "bralec"
+        vloga = "blagajnik"
 
     u = Uporabnik(
         uporabnisko_ime=uporabnisko_ime.strip(),
@@ -199,7 +199,7 @@ async def uredi_shrani(
     request: Request,
     uid: int,
     ime_priimek: str = Form(""),
-    vloga: str = Form("bralec"),
+    vloga: str = Form("blagajnik"),
     novo_geslo: str = Form(""),
     aktiven: str = Form("da"),
     db: Session = Depends(get_db),
@@ -233,7 +233,7 @@ async def uredi_shrani(
         u.geslo_hash = hash_geslo(novo_geslo)
 
     u.ime_priimek = ime_priimek.strip() or None
-    u.vloga = vloga if vloga in VLOGE else "bralec"
+    u.vloga = vloga if vloga in VLOGE else "blagajnik"
     u.aktiven = aktiven == "da"
     db.commit()
     ip = request.client.host if request.client else None

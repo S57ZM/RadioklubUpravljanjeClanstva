@@ -1,4 +1,5 @@
 import glob
+import re
 import os
 import time
 import hashlib
@@ -30,9 +31,7 @@ from .audit_log import log_akcija
 from .rate_limit import check_rate_limit, record_failed_attempt
 from .email_predloge_seed import seed_predloge
 from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, zrs_clanarine, obvestila as obvestila_router
-from .routers import dostop
 from .routers import moj_profil
-from .routers.dostop import najdi_uporabnika_za_prijavo
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +130,7 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 class InactivityTimeoutMiddleware(BaseHTTPMiddleware):
     """Odjavi uporabnika po 30 minutah neaktivnosti."""
 
-    _SKIP_PATHS_EXACT = {"/login", "/login/2fa", "/logout", "/health", "/dostop/prosnja", "/dostop/registracija", "/manifest.webmanifest", "/service-worker.js"}
+    _SKIP_PATHS_EXACT = {"/login", "/login/2fa", "/logout", "/health", "/dostop/registracija", "/manifest.webmanifest", "/service-worker.js"}
     _SKIP_PATHS_PREFIX = ("/static",)
 
     async def dispatch(self, request: Request, call_next):
@@ -177,6 +176,109 @@ class MemberScopeMiddleware(BaseHTTPMiddleware):
                 return RedirectResponse(url="/moj-profil", status_code=302)
 
         return await call_next(request)
+
+POOBLASCENE_VLOGE = {
+    "admin",
+    "predsednik",
+    "podpredsednik",
+    "blagajnik",
+}
+
+
+class RoleAccessMiddleware(BaseHTTPMiddleware):
+    # Strežniška omejitev dostopa glede na klubsko funkcijo.
+
+    _PUBLIC_EXACT = {
+        "/login",
+        "/login/2fa",
+        "/logout",
+        "/health",
+        "/manifest.webmanifest",
+        "/service-worker.js",
+    }
+    _PUBLIC_PREFIX = ("/static/",)
+
+    _ADMIN_ONLY_PREFIX = (
+        "/uporabniki",
+        "/nastavitve",
+        "/audit",
+        "/dostop",
+    )
+
+    _BLAGAJNIK_PREFIX = (
+        "/clani",
+        "/clanarine",
+        "/zrs-clanarine",
+        "/upn",
+        "/obvestila",
+        "/izvoz",
+        "/dashboard",
+        "/profil",
+    )
+
+    @staticmethod
+    def _prepovedano() -> HTMLResponse:
+        body = (
+            "<!doctype html>"
+            "<html lang='sl'>"
+            "<head>"
+            "<meta charset='UTF-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            "<title>Dostop zavrnjen</title>"
+            "</head>"
+            "<body style='font-family:system-ui;max-width:680px;margin:60px auto;padding:20px'>"
+            "<h1>403 – dostop ni dovoljen</h1>"
+            "<p>Vaša klubska funkcija nima dovoljenja za to stran.</p>"
+            "<p><a href='/clani'>Nazaj na člane</a></p>"
+            "</body></html>"
+        )
+        return HTMLResponse(body, status_code=403)
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+
+        if (
+            path in self._PUBLIC_EXACT
+            or any(path.startswith(prefix) for prefix in self._PUBLIC_PREFIX)
+        ):
+            return await call_next(request)
+
+        user = request.session.get("uporabnik")
+        if not user:
+            return await call_next(request)
+
+        vloga = user.get("vloga")
+
+        if vloga not in POOBLASCENE_VLOGE:
+            request.session.clear()
+            return RedirectResponse(url="/login?dostop=0", status_code=302)
+
+        if vloga == "admin":
+            return await call_next(request)
+
+        if any(path.startswith(prefix) for prefix in self._ADMIN_ONLY_PREFIX):
+            return self._prepovedano()
+
+        if vloga in ("predsednik", "podpredsednik"):
+            return await call_next(request)
+
+        if vloga == "blagajnik":
+            if (
+                request.method in ("POST", "DELETE")
+                and re.fullmatch(r"/clani/\d+/izbrisi", path)
+            ):
+                return self._prepovedano()
+
+            if path == "/" or any(
+                path.startswith(prefix) for prefix in self._BLAGAJNIK_PREFIX
+            ):
+                return await call_next(request)
+
+            return self._prepovedano()
+
+        return self._prepovedano()
+
+
 class KlubContextMiddleware(BaseHTTPMiddleware):
     """Na vsako zahtevo doda request.state.klub_oznaka/klub_ime iz baze in statične app podatke."""
 
@@ -313,6 +415,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Inaktivni timeout – mora biti ZNOTRAJ SessionMiddleware (dostop do request.session)
 app.add_middleware(InactivityTimeoutMiddleware)
+app.add_middleware(RoleAccessMiddleware)
 app.add_middleware(MemberScopeMiddleware)
 
 # Session z varnostnimi zastavicami
@@ -342,7 +445,6 @@ app.include_router(clani.router)
 app.include_router(clanarine.router)
 app.include_router(izvoz.router)
 app.include_router(uporabniki.router)
-app.include_router(dostop.router)
 app.include_router(moj_profil.router)
 app.include_router(nastavitve.router)
 app.include_router(profil.router)
@@ -422,7 +524,14 @@ async def login(
             {"request": request, "napaka": "Preveč neuspešnih poskusov. Počakajte 15 minut."},
         )
 
-    u = najdi_uporabnika_za_prijavo(db, uporabnisko_ime)
+    u = (
+        db.query(Uporabnik)
+        .filter(
+            Uporabnik.uporabnisko_ime == uporabnisko_ime,
+            Uporabnik.aktiven == True,
+        )
+        .first()
+    )
     # Vedno preverimo geslo (preprečimo timing attack)
     geslo_ok = preveri_geslo(geslo, u.geslo_hash) if u else False
 

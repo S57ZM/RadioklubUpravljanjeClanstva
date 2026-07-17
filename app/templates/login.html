@@ -30,7 +30,7 @@
       <form method="post" action="/login">
         <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
         <div class="mb-3">
-          <label class="form-label">Uporabniško ime, e-pošta ali klicni znak</label>
+          <label class="form-label">Uporabniško ime</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-person"></i></span>
             <input type="text" name="uporabnisko_ime" class="form-control" required autofocus>
@@ -47,11 +47,6 @@
           <i class="bi bi-box-arrow-in-right me-2"></i>Prijava
         </button>
       </form>
-      <div class="text-center mt-3">
-        <a href="/dostop/prosnja" class="text-decoration-none">
-          <i class="bi bi-person-plus me-1"></i>Dostop ali nova registracija
-        </a>
-      </div>
     </div>
   </div>
 </div>

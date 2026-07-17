@@ -59,4 +59,29 @@ def is_admin(user: dict | None) -> bool:
 
 
 def is_editor(user: dict | None) -> bool:
-    return user is not None and user.get("vloga") in ("admin", "urednik")
+    # Urejanje klubskih podatkov je dovoljeno pooblaščenim funkcijam.
+    return user is not None and user.get("vloga") in (
+        "admin",
+        "predsednik",
+        "podpredsednik",
+        "blagajnik",
+    )
+
+
+def is_management(user: dict | None) -> bool:
+    # Predsedstvo in administrator.
+    return user is not None and user.get("vloga") in (
+        "admin",
+        "predsednik",
+        "podpredsednik",
+    )
+
+
+def is_finance(user: dict | None) -> bool:
+    # Vloge z dostopom do članarin in UPN podatkov.
+    return user is not None and user.get("vloga") in (
+        "admin",
+        "predsednik",
+        "podpredsednik",
+        "blagajnik",
+    )
