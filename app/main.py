@@ -31,6 +31,7 @@ from .rate_limit import check_rate_limit, record_failed_attempt
 from .email_predloge_seed import seed_predloge
 from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, zrs_clanarine, obvestila as obvestila_router
 from .routers import dostop
+from .routers import moj_profil
 from .routers.dostop import najdi_uporabnika_za_prijavo
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 # Varnostne nastavitve
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "1.30-s50ttt"
+APP_VERSION = "1.31-s50ttt"
 APP_RELEASE_DATE = "2026-07-17"
 
 # Preberi LICENSE ob zagonu (enkrat, ne ob vsaki zahtevi)
@@ -130,7 +131,7 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 class InactivityTimeoutMiddleware(BaseHTTPMiddleware):
     """Odjavi uporabnika po 30 minutah neaktivnosti."""
 
-    _SKIP_PATHS_EXACT = {"/login", "/login/2fa", "/logout", "/health", "/dostop/prosnja", "/manifest.webmanifest", "/service-worker.js"}
+    _SKIP_PATHS_EXACT = {"/login", "/login/2fa", "/logout", "/health", "/dostop/prosnja", "/dostop/registracija", "/manifest.webmanifest", "/service-worker.js"}
     _SKIP_PATHS_PREFIX = ("/static",)
 
     async def dispatch(self, request: Request, call_next):
@@ -147,6 +148,35 @@ class InactivityTimeoutMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+
+class MemberScopeMiddleware(BaseHTTPMiddleware):
+    """Članu z vlogo bralec dovoli samo njegov profil in varnostne nastavitve."""
+
+    _ALLOWED_EXACT = {
+        "/",
+        "/logout",
+        "/health",
+        "/manifest.webmanifest",
+        "/service-worker.js",
+    }
+    _ALLOWED_PREFIX = (
+        "/static/",
+        "/moj-profil",
+        "/profil",
+    )
+
+    async def dispatch(self, request: Request, call_next):
+        user = request.session.get("uporabnik")
+        if user and user.get("vloga") == "bralec":
+            path = request.url.path
+            allowed = (
+                path in self._ALLOWED_EXACT
+                or any(path.startswith(prefix) for prefix in self._ALLOWED_PREFIX)
+            )
+            if not allowed:
+                return RedirectResponse(url="/moj-profil", status_code=302)
+
+        return await call_next(request)
 class KlubContextMiddleware(BaseHTTPMiddleware):
     """Na vsako zahtevo doda request.state.klub_oznaka/klub_ime iz baze in statične app podatke."""
 
@@ -283,6 +313,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Inaktivni timeout – mora biti ZNOTRAJ SessionMiddleware (dostop do request.session)
 app.add_middleware(InactivityTimeoutMiddleware)
+app.add_middleware(MemberScopeMiddleware)
 
 # Session z varnostnimi zastavicami
 app.add_middleware(
@@ -312,6 +343,7 @@ app.include_router(clanarine.router)
 app.include_router(izvoz.router)
 app.include_router(uporabniki.router)
 app.include_router(dostop.router)
+app.include_router(moj_profil.router)
 app.include_router(nastavitve.router)
 app.include_router(profil.router)
 app.include_router(aktivnosti.router)
@@ -351,17 +383,22 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+
+def _domaca_pot(user: dict | None) -> str:
+    if user and user.get("vloga") == "bralec":
+        return "/moj-profil"
+    return "/clani"
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request) -> RedirectResponse:
     if not request.session.get("uporabnik"):
         return RedirectResponse(url="/login", status_code=302)
-    return RedirectResponse(url="/clani", status_code=302)
+    return RedirectResponse(url=_domaca_pot(request.session.get("uporabnik")), status_code=302)
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_stran(request: Request) -> Response:
     if request.session.get("uporabnik"):
-        return RedirectResponse(url="/clani", status_code=302)
+        return RedirectResponse(url=_domaca_pot(request.session.get("uporabnik")), status_code=302)
     timeout = request.query_params.get("timeout") == "1"
     return templates.TemplateResponse(request, "login.html", {"request": request, "timeout": timeout})
 
@@ -386,9 +423,6 @@ async def login(
         )
 
     u = najdi_uporabnika_za_prijavo(db, uporabnisko_ime)
-        .first()
-    )
-
     # Vedno preverimo geslo (preprečimo timing attack)
     geslo_ok = preveri_geslo(geslo, u.geslo_hash) if u else False
 
@@ -419,7 +453,7 @@ async def login(
                     }
                     log_akcija(db, uporabnisko_ime, "login_2fa_zaupljiva",
                                f"Prijava z zaupljivo napravo: {uporabnisko_ime}", ip=ip)
-                    return RedirectResponse(url="/clani", status_code=302)
+                    return RedirectResponse(url=_domaca_pot(request.session.get("uporabnik")), status_code=302)
             # Ni zaupljive naprave – zahtevaj OTP kodo
             request.session.clear()
             request.session["_2fa_cakanje"] = u.uporabnisko_ime
@@ -436,7 +470,7 @@ async def login(
         }
         logger.info(f"Uspešna prijava: {uporabnisko_ime} ({ip})")
         log_akcija(db, uporabnisko_ime, "login_ok", f"Prijava: {uporabnisko_ime}", ip=ip)
-        return RedirectResponse(url="/clani", status_code=302)
+        return RedirectResponse(url=_domaca_pot(request.session.get("uporabnik")), status_code=302)
 
     record_failed_attempt(ip, db, uporabnisko_ime)
     logger.warning(f"Neuspešna prijava: {uporabnisko_ime} ({ip})")

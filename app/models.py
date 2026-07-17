@@ -165,6 +165,32 @@ class DostopnaProsnja(Base):
 
     clan = relationship("Clan")
 
+
+class RegistracijskaProsnja(Base):
+    """Prošnja nove osebe za članstvo in uporabniški dostop."""
+
+    __tablename__ = "registracijske_prosnje"
+
+    id = Column(Integer, primary_key=True, index=True)
+    priimek = Column(String, nullable=False)
+    ime = Column(String, nullable=False)
+    klicni_znak = Column(String, nullable=True, index=True)
+    elektronska_posta = Column(String, nullable=False, index=True)
+    naslov_ulica = Column(String, nullable=True)
+    naslov_posta = Column(String, nullable=True)
+    mobilni_telefon = Column(String, nullable=True)
+    operaterski_razred = Column(String, nullable=True)
+    tip_clanstva = Column(String, nullable=False)
+    zrs_vrsta = Column(String, nullable=False, default="Brez ZRS")
+    uporabnisko_ime = Column(String, nullable=False, index=True)
+    geslo_hash = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="caka", index=True)
+    ip = Column(String, nullable=True)
+    opomba = Column(String, nullable=True)
+    created_clan_id = Column(Integer, ForeignKey("clani.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    obravnavano_at = Column(DateTime(timezone=True), nullable=True)
+    obravnaval = Column(String, nullable=True)
 class Nastavitev(Base):
     __tablename__ = "nastavitve"
 

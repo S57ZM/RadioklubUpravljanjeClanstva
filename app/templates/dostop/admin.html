@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Prošnje za dostop{% endblock %}
+{% block title %}Prošnje za dostop in članstvo{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
   <div>
     <h2 class="mb-1">
-      <i class="bi bi-person-check-fill me-2"></i>Prošnje za dostop
+      <i class="bi bi-person-check-fill me-2"></i>Prošnje za dostop in članstvo
     </h2>
     <p class="text-muted mb-0">
-      Administrator vidi članske in prijavne podatke, nikoli pa gesla.
+      Gesla so shranjena zgoščeno in administratorju niso nikoli prikazana.
     </p>
   </div>
 </div>
@@ -20,7 +20,10 @@
 </div>
 {% endif %}
 
-<div class="card shadow-sm">
+<div class="card shadow-sm mb-4">
+  <div class="card-header">
+    <strong>Obstoječi člani – prošnje za dostop</strong>
+  </div>
   <div class="card-body">
     <div class="table-responsive">
       <table class="table table-hover align-middle">
@@ -30,54 +33,41 @@
             <th>Klicni znak</th>
             <th>E-pošta</th>
             <th>Uporabniško ime</th>
-            <th>Oddano</th>
             <th>Status</th>
             <th class="text-end">Dejanja</th>
           </tr>
         </thead>
         <tbody>
-          {% for p in prosnje %}
+          {% for p in dostopne_prosnje %}
           <tr>
             <td>
               {% if p.clan %}
-                <strong>{{ p.clan.ime }} {{ p.clan.priimek }}</strong>
+              <strong>{{ p.clan.ime }} {{ p.clan.priimek }}</strong>
               {% else %}
-                <span class="text-danger">Manjkajoč član</span>
+              <span class="text-danger">Manjkajoč član</span>
               {% endif %}
             </td>
             <td>{{ p.clan.klicni_znak if p.clan else '' }}</td>
-            <td>
-              {% if p.clan and p.clan.elektronska_posta %}
-              <a href="mailto:{{ p.clan.elektronska_posta }}">
-                {{ p.clan.elektronska_posta }}
-              </a>
-              {% endif %}
-            </td>
+            <td>{{ p.clan.elektronska_posta if p.clan else '' }}</td>
             <td><code>{{ p.uporabnisko_ime }}</code></td>
             <td>
-              {% if p.created_at %}
-                {{ p.created_at.strftime('%d. %m. %Y %H:%M') }}
-              {% endif %}
-            </td>
-            <td>
               {% if p.status == 'caka' %}
-                <span class="badge bg-warning text-dark">Čaka</span>
+              <span class="badge bg-warning text-dark">Čaka</span>
               {% elif p.status == 'odobrena' %}
-                <span class="badge bg-success">Odobrena</span>
+              <span class="badge bg-success">Odobrena</span>
               {% else %}
-                <span class="badge bg-secondary">Zavrnjena</span>
+              <span class="badge bg-secondary">Zavrnjena</span>
               {% endif %}
             </td>
             <td class="text-end">
               {% if p.status == 'caka' %}
-              <div class="d-flex flex-column flex-md-row justify-content-end gap-2">
+              <div class="d-flex flex-column flex-lg-row justify-content-end gap-2">
                 <form method="post" action="/dostop/prosnje/{{ p.id }}/odobri">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                   <button class="btn btn-success btn-sm" type="submit">
                     <i class="bi bi-check-lg me-1"></i>Odobri
                   </button>
                 </form>
-
                 <form
                   method="post"
                   action="/dostop/prosnje/{{ p.id }}/zavrni"
@@ -88,7 +78,7 @@
                     type="text"
                     name="opomba"
                     class="form-control form-control-sm"
-                    placeholder="Opomba (neobvezno)"
+                    placeholder="Opomba"
                     maxlength="500"
                   >
                   <button class="btn btn-outline-danger btn-sm" type="submit">
@@ -97,22 +87,116 @@
                 </form>
               </div>
               {% else %}
-                <small class="text-muted">
-                  {{ p.obravnaval or '' }}
-                  {% if p.obravnavano_at %}
-                    · {{ p.obravnavano_at.strftime('%d. %m. %Y %H:%M') }}
-                  {% endif %}
-                </small>
-                {% if p.opomba %}
-                  <div class="small text-muted">{{ p.opomba }}</div>
-                {% endif %}
+              <small class="text-muted">{{ p.obravnaval or '' }}</small>
               {% endif %}
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="7" class="text-center text-muted py-5">
-              Trenutno ni prošenj za dostop.
+            <td colspan="6" class="text-center text-muted py-4">
+              Ni prošenj obstoječih članov.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header">
+    <strong>Novi člani – registracijske prošnje</strong>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Oseba</th>
+            <th>Kontakt</th>
+            <th>Članstvo</th>
+            <th>ZRS</th>
+            <th>Uporabniško ime</th>
+            <th>Status</th>
+            <th class="text-end">Dejanja</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in registracijske_prosnje %}
+          <tr>
+            <td>
+              <strong>{{ p.ime }} {{ p.priimek }}</strong>
+              {% if p.klicni_znak %}
+              <div><code>{{ p.klicni_znak }}</code></div>
+              {% endif %}
+              {% if p.naslov_ulica or p.naslov_posta %}
+              <small class="text-muted">
+                {{ p.naslov_ulica or '' }} {{ p.naslov_posta or '' }}
+              </small>
+              {% endif %}
+            </td>
+            <td>
+              <a href="mailto:{{ p.elektronska_posta }}">
+                {{ p.elektronska_posta }}
+              </a>
+              {% if p.mobilni_telefon %}
+              <div>{{ p.mobilni_telefon }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {{ p.tip_clanstva }}
+              {% if p.operaterski_razred %}
+              <div><small>Razred: {{ p.operaterski_razred }}</small></div>
+              {% endif %}
+            </td>
+            <td>{{ p.zrs_vrsta }}</td>
+            <td><code>{{ p.uporabnisko_ime }}</code></td>
+            <td>
+              {% if p.status == 'caka' %}
+              <span class="badge bg-warning text-dark">Čaka</span>
+              {% elif p.status == 'odobrena' %}
+              <span class="badge bg-success">Odobrena</span>
+              {% else %}
+              <span class="badge bg-secondary">Zavrnjena</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if p.status == 'caka' %}
+              <div class="d-flex flex-column gap-2">
+                <form method="post" action="/dostop/registracije/{{ p.id }}/odobri">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+                  <button class="btn btn-success btn-sm w-100" type="submit">
+                    <i class="bi bi-check-lg me-1"></i>Odobri in ustvari člana
+                  </button>
+                </form>
+                <form
+                  method="post"
+                  action="/dostop/registracije/{{ p.id }}/zavrni"
+                  class="d-flex gap-1"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+                  <input
+                    type="text"
+                    name="opomba"
+                    class="form-control form-control-sm"
+                    placeholder="Opomba"
+                    maxlength="500"
+                  >
+                  <button class="btn btn-outline-danger btn-sm" type="submit">
+                    Zavrni
+                  </button>
+                </form>
+              </div>
+              {% else %}
+              <small class="text-muted">{{ p.obravnaval or '' }}</small>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+              Ni registracijskih prošenj novih članov.
             </td>
           </tr>
           {% endfor %}

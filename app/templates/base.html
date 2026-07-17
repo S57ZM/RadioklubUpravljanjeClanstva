@@ -17,6 +17,22 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+
+  {# Članu skrij administrativne menijske povezave; dostop je dodatno blokiran na strežniku. #}
+  {% if user and user.vloga == 'bralec' %}
+  <style id="bralec-scope-css">
+    a[href="/clani"],
+    a[href="/izvoz"],
+    a[href="/skupine"],
+    a[href="/aktivnosti"],
+    a[href="/clanarine"],
+    a[href="/zrs-clanarine"],
+    a[href="/dashboard"],
+    a[href="/obvestila"] {
+      display: none !important;
+    }
+  </style>
+  {% endif %}
 </head>
 <body>
 
