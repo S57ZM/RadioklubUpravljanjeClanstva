@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from .config import get_nastavitev, get_clanarina_zneski
 from .models import Clan
 from .upn import generiraj_upn_png
+from .placilo import pripravi_placilo
 
 
 def get_smtp_nastavitve(db: Session) -> dict:
@@ -32,39 +33,25 @@ def get_smtp_nastavitve(db: Session) -> dict:
     }
 
 
-def _qr_png_bytes(clan: Clan, leto: int, db: Session) -> bytes:
-    """Generira UPN QR PNG in vrne raw bytes (za CID inline attachment)."""
-    iban = get_nastavitev(db, "klub_iban", "")
-    ime_kluba = get_nastavitev(db, "klub_ime", "")
-    ulica_kluba = get_nastavitev(db, "klub_naslov", "")
-    kraj_kluba = get_nastavitev(db, "klub_posta", "")
-    ref_predloga = get_nastavitev(db, "upn_referenca_predloga", "SI00 {id}-{leto}")
-    namen = get_nastavitev(db, "upn_namen", "OTHR")
-    opis_predloga = get_nastavitev(db, "upn_opis_predloga", "Članarina {leto}")
-
-    referenca = (
-        ref_predloga
-        .replace("{leto}", str(leto))
-        .replace("{id}", str(clan.id))
-        .replace("{es}", str(clan.es_stevilka) if clan.es_stevilka else "")
-    )
-    opis = opis_predloga.replace("{leto}", str(leto))
-
-    zneski = get_clanarina_zneski(db)
-    znesek = zneski.get(clan.tip_clanstva) if clan.tip_clanstva else None
-
+def _qr_png_bytes(
+    clan: Clan,
+    leto: int,
+    db: Session,
+) -> bytes:
+    # Enoten izračun: klubska + ZRS članarina.
+    podatki = pripravi_placilo(db, clan, leto)
     return generiraj_upn_png(
-        ime_placnika=f"{clan.priimek} {clan.ime}",
-        ulica_placnika=clan.naslov_ulica or "",
-        kraj_placnika=clan.naslov_posta or "",
-        iban_prejemnika=iban,
-        referenca=referenca,
-        ime_prejemnika=ime_kluba,
-        ulica_prejemnika=ulica_kluba,
-        kraj_prejemnika=kraj_kluba,
-        opis=opis,
-        znesek_eur=znesek,
-        namen=namen,
+        ime_placnika=podatki.placnik,
+        ulica_placnika=podatki.ulica_placnika,
+        kraj_placnika=podatki.kraj_placnika,
+        iban_prejemnika=podatki.iban,
+        referenca=podatki.referenca,
+        ime_prejemnika=podatki.prejemnik,
+        ulica_prejemnika=podatki.ulica_prejemnika,
+        kraj_prejemnika=podatki.kraj_prejemnika,
+        opis=podatki.opis,
+        znesek_eur=podatki.skupaj,
+        namen=podatki.namen,
     )
 
 

@@ -1,47 +1,31 @@
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import Response, RedirectResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
-from ..database import get_db
-from ..models import Clan, ZrsClanarina
 from ..auth import require_login
-from ..config import get_nastavitev, get_clanarina_zneski
-from ..upn import generiraj_upn_svg, generiraj_upn_png
+from ..database import get_db
+from ..models import Clan
+from ..placilo import pripravi_placilo
+from ..upn import generiraj_upn_png, generiraj_upn_svg
+
 
 router = APIRouter(prefix="/upn")
 
-def _dodaj_zrs(
-    db: Session,
-    clan: Clan,
-    leto: int,
-    osnovni_znesek: float | None,
-) -> tuple[float | None, str]:
-    evidenca = (
-        db.query(ZrsClanarina)
-        .filter(
-            ZrsClanarina.clan_id == clan.id,
-            ZrsClanarina.leto == leto,
-        )
-        .first()
-    )
 
-    if not evidenca or not evidenca.zrs_znesek:
-        return osnovni_znesek, ""
-
-    klub = (
-        float(evidenca.klub_znesek)
-        if evidenca.klub_znesek is not None
-        else float(osnovni_znesek or 0.0)
-    )
-    skupaj = klub + float(evidenca.zrs_znesek or 0.0)
-
-    dopis = get_nastavitev(
-        db,
-        "zrs_opis_dopis",
-        " + ZRS članarina ({zrs_vrsta})",
-    )
-    dopis = dopis.replace("{zrs_vrsta}", evidenca.zrs_vrsta or "")
-    return skupaj, dopis
+def _upn_argumenti(podatki) -> dict:
+    return {
+        "ime_placnika": podatki.placnik,
+        "ulica_placnika": podatki.ulica_placnika,
+        "kraj_placnika": podatki.kraj_placnika,
+        "iban_prejemnika": podatki.iban,
+        "referenca": podatki.referenca,
+        "ime_prejemnika": podatki.prejemnik,
+        "ulica_prejemnika": podatki.ulica_prejemnika,
+        "kraj_prejemnika": podatki.kraj_prejemnika,
+        "opis": podatki.opis,
+        "znesek_eur": podatki.skupaj,
+        "namen": podatki.namen,
+    }
 
 
 @router.get("/{clan_id}/{leto}")
@@ -59,41 +43,13 @@ async def upn_qr(
     if not clan:
         return RedirectResponse(url="/clani", status_code=302)
 
-    iban = get_nastavitev(db, "klub_iban", "")
-    ime_kluba = get_nastavitev(db, "klub_ime", "")
-    ulica_kluba = get_nastavitev(db, "klub_naslov", "")
-    kraj_kluba = get_nastavitev(db, "klub_posta", "")
-    ref_predloga = get_nastavitev(db, "upn_referenca_predloga", "SI00 5-{leto}")
-    namen = get_nastavitev(db, "upn_namen", "OTHR")
-    opis_predloga = get_nastavitev(db, "upn_opis_predloga", "Članarina {leto}")
-
-    referenca = ref_predloga.replace("{leto}", str(leto)).replace(
-        "{id}", str(clan.id)
-    ).replace(
-        "{es}", str(clan.es_stevilka) if clan.es_stevilka else ""
+    podatki = pripravi_placilo(db, clan, leto)
+    svg = generiraj_upn_svg(**_upn_argumenti(podatki))
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
     )
-    opis = opis_predloga.replace("{leto}", str(leto))
-
-    zneski = get_clanarina_zneski(db)
-    znesek = zneski.get(clan.tip_clanstva) if clan.tip_clanstva else None
-    znesek, zrs_dopis = _dodaj_zrs(db, clan, leto, znesek)
-    if zrs_dopis:
-        opis = f"{opis}{zrs_dopis}"
-
-    svg = generiraj_upn_svg(
-        ime_placnika=f"{clan.priimek} {clan.ime}",
-        ulica_placnika=clan.naslov_ulica or "",
-        kraj_placnika=clan.naslov_posta or "",
-        iban_prejemnika=iban,
-        referenca=referenca,
-        ime_prejemnika=ime_kluba,
-        ulica_prejemnika=ulica_kluba,
-        kraj_prejemnika=kraj_kluba,
-        opis=opis,
-        znesek_eur=znesek,
-        namen=namen,
-    )
-    return Response(content=svg, media_type="image/svg+xml")
 
 
 @router.get("/{clan_id}/{leto}/png")
@@ -103,7 +59,6 @@ async def upn_qr_png(
     leto: int,
     db: Session = Depends(get_db),
 ) -> Response:
-    """PNG različica UPN QR kode (za tiskanje / pošiljanje po emailu)."""
     user, redirect = require_login(request)
     if redirect:
         return redirect
@@ -112,45 +67,22 @@ async def upn_qr_png(
     if not clan:
         return Response(content=b"", status_code=404)
 
-    iban = get_nastavitev(db, "klub_iban", "")
-    ime_kluba = get_nastavitev(db, "klub_ime", "")
-    ulica_kluba = get_nastavitev(db, "klub_naslov", "")
-    kraj_kluba = get_nastavitev(db, "klub_posta", "")
-    ref_predloga = get_nastavitev(db, "upn_referenca_predloga", "SI00 5-{leto}")
-    namen = get_nastavitev(db, "upn_namen", "OTHR")
-    opis_predloga = get_nastavitev(db, "upn_opis_predloga", "Članarina {leto}")
+    podatki = pripravi_placilo(db, clan, leto)
+    png = generiraj_upn_png(**_upn_argumenti(podatki))
 
-    referenca = ref_predloga.replace("{leto}", str(leto)).replace(
-        "{id}", str(clan.id)
-    ).replace(
-        "{es}", str(clan.es_stevilka) if clan.es_stevilka else ""
+    oznaka = (
+        clan.klicni_znak
+        or str(clan.es_stevilka or clan.id)
     )
-    opis = opis_predloga.replace("{leto}", str(leto))
+    filename = f"UPN_{oznaka}_{leto}.png"
 
-    zneski = get_clanarina_zneski(db)
-    znesek = zneski.get(clan.tip_clanstva) if clan.tip_clanstva else None
-    znesek, zrs_dopis = _dodaj_zrs(db, clan, leto, znesek)
-    if zrs_dopis:
-        opis = f"{opis}{zrs_dopis}"
-
-    png = generiraj_upn_png(
-        ime_placnika=f"{clan.priimek} {clan.ime}",
-        ulica_placnika=clan.naslov_ulica or "",
-        kraj_placnika=clan.naslov_posta or "",
-        iban_prejemnika=iban,
-        referenca=referenca,
-        ime_prejemnika=ime_kluba,
-        ulica_prejemnika=ulica_kluba,
-        kraj_prejemnika=kraj_kluba,
-        opis=opis,
-        znesek_eur=znesek,
-        namen=namen,
-    )
-    es = clan.es_stevilka or str(clan.id)
-    filename = f"{es}_{leto}.png"
     return Response(
         content=png,
         media_type="image/png",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"'
+            ),
+            "Cache-Control": "no-store",
+        },
     )
-

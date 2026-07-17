@@ -32,6 +32,7 @@ from .rate_limit import check_rate_limit, record_failed_attempt
 from .email_predloge_seed import seed_predloge
 from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, zrs_clanarine, obvestila as obvestila_router
 from .routers import moj_profil
+from .routers import placilo
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 # Varnostne nastavitve
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "1.31-s50ttt"
+APP_VERSION = "1.32-s50ttt"
 APP_RELEASE_DATE = "2026-07-17"
 
 # Preberi LICENSE ob zagonu (enkrat, ne ob vsaki zahtevi)
@@ -60,6 +61,7 @@ PRIVZETE_NASTAVITVE = {
     "operaterski_razredi": ("\n".join(OPERATERSKI_RAZREDI_PRIVZETO), "Operaterski razredi (ena vrednost na vrstico)"),
     "vloge_clanov": ("\n".join(VLOGE_CLANOV_PRIVZETO), "Vloge in funkcije članov (ena vrednost na vrstico)"),
     "klub_iban": ("", "IBAN bančnega računa kluba (za UPN QR)"),
+    "klub_bic": ("", "BIC / SWIFT banke kluba (za SEPA QR, po potrebi)"),
     "upn_referenca_predloga": ("SI00 {id}-{leto}", "Predloga reference UPN QR – spremenljivke: {leto}, {id}, {es}"),
     "upn_namen": ("OTHR", "Koda namena UPN QR (4 znaki, npr. OTHR)"),
     "upn_opis_predloga": ("Članarina {leto}", "Predloga opisa UPN QR – spremenljivka: {leto}"),
@@ -210,6 +212,7 @@ class RoleAccessMiddleware(BaseHTTPMiddleware):
         "/clanarine",
         "/zrs-clanarine",
         "/upn",
+        "/placilo",
         "/obvestila",
         "/izvoz",
         "/dashboard",
@@ -454,6 +457,7 @@ app.include_router(audit.router)
 app.include_router(dashboard.router)
 app.include_router(vloge.router)
 app.include_router(upn.router)
+app.include_router(placilo.router)
 app.include_router(zrs_clanarine.router)
 app.include_router(obvestila_router.router)
 

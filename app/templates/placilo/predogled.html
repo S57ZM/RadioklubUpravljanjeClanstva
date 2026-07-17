@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Predogled plačila – {{ clan.priimek }} {{ clan.ime }}{% endblock %}
+
+{% block content %}
+<style>
+  .payment-sheet {
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+  .payment-document {
+    background: #fff;
+    border: 2px solid #1d3557;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.10);
+  }
+  .payment-document__head {
+    background: #edf6ff;
+    border-bottom: 2px solid #1d3557;
+    padding: 20px;
+  }
+  .payment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .payment-field {
+    padding: 14px 18px;
+    border-right: 1px solid #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
+    min-height: 82px;
+  }
+  .payment-field:nth-child(2n) {
+    border-right: 0;
+  }
+  .payment-label {
+    color: #64748b;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .payment-value {
+    font-size: 1.08rem;
+    font-weight: 700;
+    word-break: break-word;
+  }
+  .payment-amount {
+    font-size: 2rem;
+    color: #0d6efd;
+  }
+  .qr-card {
+    height: 100%;
+    border: 1px solid #d7dee8;
+    border-radius: 14px;
+    padding: 20px;
+    background: #fff;
+    text-align: center;
+  }
+  .qr-card img {
+    max-width: 280px;
+    width: 100%;
+    height: auto;
+  }
+  .copy-button {
+    white-space: nowrap;
+  }
+  @media (max-width: 767px) {
+    .payment-grid {
+      grid-template-columns: 1fr;
+    }
+    .payment-field {
+      border-right: 0;
+    }
+  }
+  @media print {
+    nav,
+    footer,
+    .no-print,
+    #pwa-install-button {
+      display: none !important;
+    }
+    body {
+      background: #fff !important;
+    }
+    .payment-sheet {
+      max-width: none;
+    }
+    .payment-document,
+    .qr-card {
+      box-shadow: none;
+      break-inside: avoid;
+    }
+  }
+</style>
+
+<div class="payment-sheet">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
+    <div>
+      <h2 class="mb-1">Predogled plačila</h2>
+      <div class="text-muted">Payment preview · {{ leto }}</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary" href="/clani/{{ clan.id }}">
+        <i class="bi bi-arrow-left me-1"></i>Nazaj
+      </a>
+      <button class="btn btn-primary" type="button" onclick="window.print()">
+        <i class="bi bi-printer me-1"></i>Natisni / Shrani PDF
+      </button>
+    </div>
+  </div>
+
+  {% if napake %}
+  <div class="alert alert-danger">
+    <strong>Plačilnih QR-kod še ni mogoče pravilno izdelati:</strong>
+    <ul class="mb-0 mt-2">
+      {% for napaka in napake %}
+      <li>{{ napaka }}</li>
+      {% endfor %}
+    </ul>
+    <div class="mt-2">
+      Podatke popravi v <a href="/nastavitve">Nastavitvah</a>.
+    </div>
+  </div>
+  {% endif %}
+
+  <section class="payment-document mb-4">
+    <div class="payment-document__head">
+      <div class="d-flex flex-wrap justify-content-between gap-3">
+        <div>
+          <div class="payment-label">Plačilo članarine / Membership fee</div>
+          <h3 class="mb-0">{{ placilo.prejemnik or request.state.klub_ime }}</h3>
+        </div>
+        <div class="text-md-end">
+          <div class="payment-label">Skupaj / Total</div>
+          <div class="payment-value payment-amount">
+            {{ "%.2f"|format(placilo.skupaj) }} €
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="payment-grid">
+      <div class="payment-field">
+        <div class="payment-label">Plačnik / Payer</div>
+        <div class="payment-value">
+          {{ placilo.placnik }}
+          {% if placilo.klicni_znak %}
+          · {{ placilo.klicni_znak }}
+          {% endif %}
+        </div>
+        <div>{{ placilo.ulica_placnika }}</div>
+        <div>{{ placilo.kraj_placnika }}</div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">Prejemnik / Beneficiary</div>
+        <div class="payment-value">{{ placilo.prejemnik }}</div>
+        <div>{{ placilo.ulica_prejemnika }}</div>
+        <div>{{ placilo.kraj_prejemnika }}</div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">IBAN</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="payment-value flex-grow-1" id="copy-iban">
+            {{ placilo.iban }}
+          </div>
+          <button class="btn btn-sm btn-outline-secondary copy-button no-print"
+                  type="button"
+                  data-copy-target="copy-iban">
+            Kopiraj
+          </button>
+        </div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">BIC / SWIFT</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="payment-value flex-grow-1" id="copy-bic">
+            {{ placilo.bic or "–" }}
+          </div>
+          {% if placilo.bic %}
+          <button class="btn btn-sm btn-outline-secondary copy-button no-print"
+                  type="button"
+                  data-copy-target="copy-bic">
+            Kopiraj
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">Namen / Purpose</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="payment-value flex-grow-1" id="copy-purpose">
+            {{ placilo.opis }}
+          </div>
+          <button class="btn btn-sm btn-outline-secondary copy-button no-print"
+                  type="button"
+                  data-copy-target="copy-purpose">
+            Kopiraj
+          </button>
+        </div>
+        <div class="text-muted">{{ placilo.namen }}</div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">Referenca / Reference</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="payment-value flex-grow-1" id="copy-reference">
+            {{ placilo.referenca }}
+          </div>
+          <button class="btn btn-sm btn-outline-secondary copy-button no-print"
+                  type="button"
+                  data-copy-target="copy-reference">
+            Kopiraj
+          </button>
+        </div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">Klubska članarina / Club fee</div>
+        <div class="payment-value">{{ "%.2f"|format(placilo.klub_znesek) }} €</div>
+      </div>
+
+      <div class="payment-field">
+        <div class="payment-label">ZRS članarina / ZRS fee</div>
+        <div class="payment-value">{{ "%.2f"|format(placilo.zrs_znesek) }} €</div>
+        <div class="text-muted">{{ placilo.zrs_vrsta }}</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <section class="qr-card">
+        <h4>UPN QR</h4>
+        <p class="text-muted">
+          Za slovenske bančne aplikacije.
+        </p>
+        {% if not napake %}
+        <img src="/upn/{{ clan.id }}/{{ leto }}"
+             alt="UPN QR za plačilo članarine">
+        <div class="mt-3 no-print">
+          <a class="btn btn-outline-primary"
+             href="/upn/{{ clan.id }}/{{ leto }}/png">
+            <i class="bi bi-download me-1"></i>Prenesi UPN PNG
+          </a>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="col-lg-6">
+      <section class="qr-card">
+        <h4>SEPA / EPC QR</h4>
+        <p class="text-muted">
+          Za Revolut, N26 in druge evropske bančne aplikacije,
+          ki podpirajo EPC QR.
+        </p>
+        {% if not napake %}
+        <img src="/placilo/{{ clan.id }}/{{ leto }}/sepa.svg"
+             alt="SEPA EPC QR za plačilo članarine">
+        <div class="mt-3 no-print">
+          <a class="btn btn-outline-primary"
+             href="/placilo/{{ clan.id }}/{{ leto }}/sepa.png">
+            <i class="bi bi-download me-1"></i>Prenesi SEPA PNG
+          </a>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  <div class="alert alert-info mt-4">
+    <strong>Opomba / Note:</strong>
+    Podpora za EPC QR je odvisna od posamezne bančne aplikacije.
+    Če skeniranje ni na voljo, uporabi zgoraj prikazane podatke za
+    ročni SEPA prenos.
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll("[data-copy-target]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = document.getElementById(button.dataset.copyTarget);
+      if (!target) return;
+
+      const value = target.textContent.trim();
+      try {
+        await navigator.clipboard.writeText(value);
+        const oldText = button.textContent;
+        button.textContent = "Kopirano";
+        setTimeout(() => {
+          button.textContent = oldText;
+        }, 1300);
+      } catch (error) {
+        window.prompt("Kopiraj podatek:", value);
+      }
+    });
+  });
+</script>
+{% endblock %}

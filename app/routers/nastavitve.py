@@ -33,6 +33,7 @@ KLJUCI_KLUB = [
     ("klub_posta", "Poštna številka in kraj"),
     ("klub_email", "E-poštni naslov kluba"),
     ("klub_iban", "IBAN bančnega računa (za UPN QR)"),
+    ("klub_bic", "BIC / SWIFT banke kluba (za SEPA QR, po potrebi)"),
 ]
 
 # Polja ki so seznami (ena vrednost na vrstico)
