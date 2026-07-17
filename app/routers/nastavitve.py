@@ -42,7 +42,7 @@ KLJUCI_SEZNAM = [
     ("vloge_clanov", "Vloge in funkcije članov", VLOGE_CLANOV_PRIVZETO),
     ("clanarina_zneski", "Zneski članarine za UPN QR (Tip=Znesek, ena vrstica na tip)",
      ["Osebni=25.00", "Mladi=10.00", "Družinski=35.00", "Simpatizerji=15.00", "Invalid=10.00"]),
-    ("zrs_clanarina_zneski", "Zneski ZRS ÄŤlanarine (Vrsta=Znesek, ena vrstica na vrsto)", ["Brez ZRS=0.00", "Redni ÄŤlan=40.00", "DruĹľinski ÄŤlan=20.00", "Operater invalid=20.00", "Mladi do 18 let=20.00"]),
+    ("zrs_clanarina_zneski", "Zneski ZRS članarine (Vrsta=Znesek, ena vrstica na vrsto)", ["Brez ZRS=0.00", "Redni član=40.00", "Družinski član=20.00", "Operater invalid=20.00", "Mladi do 18 let=20.00"]),
 ]
 
 # UPN QR predloge
@@ -50,7 +50,7 @@ KLJUCI_UPN = [
     ("upn_referenca_predloga", "Predloga reference (spremenljivke: {leto}, {es})"),
     ("upn_namen", "Koda namena (4 znaki, npr. MEMB)"),
     ("upn_opis_predloga", "Predloga opisa plačila (spremenljivka: {leto})"),
-    ("zrs_opis_dopis", "Dopis pri skupni ZRS ÄŤlanarini (spremenljivka: {zrs_vrsta})"),
+    ("zrs_opis_dopis", "Dopis pri skupni ZRS članarini (spremenljivka: {zrs_vrsta})"),
 ]
 
 # SMTP nastavitve za e-poštno pošiljanje
@@ -84,7 +84,7 @@ async def nastavitve_stran(request: Request, db: Session = Depends(get_db)) -> R
         "upn_referenca_predloga": "SI00 5-{leto}",
         "upn_namen": "MEMB",
         "upn_opis_predloga": "Članarina {leto}",
-        "zrs_opis_dopis": " + ZRS ÄŤlanarina ({zrs_vrsta})",
+        "zrs_opis_dopis": " + ZRS članarina ({zrs_vrsta})",
     }
     for k, v in upn_privzeto.items():
         if k not in nas or not nas[k]:

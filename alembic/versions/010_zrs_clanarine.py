@@ -1,4 +1,4 @@
-"""ZRS ÄŤlanarine â€“ loÄŤen klubski in ZRS del.
+"""ZRS članarine – ločen klubski in ZRS del.
 
 Revision ID: 010
 Revises: 009

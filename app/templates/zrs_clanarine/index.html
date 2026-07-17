@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}ZRS ÄŤlanarine â€“ {{ request.state.klub_oznaka or 'Radio klub' }}{% endblock %}
+{% block title %}ZRS članarine – {{ request.state.klub_oznaka or 'Radio klub' }}{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
-    <h4 class="mb-1"><i class="bi bi-bank me-2"></i>Klubska + ZRS ÄŤlanarina</h4>
-    <div class="text-muted">LoÄŤena evidenca klubskega denarja in denarja, zbranega za ZRS.</div>
+    <h4 class="mb-1"><i class="bi bi-bank me-2"></i>Klubska + ZRS članarina</h4>
+    <div class="text-muted">Ločena evidenca klubskega denarja in denarja, zbranega za ZRS.</div>
   </div>
   <form method="get" action="/zrs-clanarine" class="d-flex gap-2 align-items-end">
     <div>
@@ -14,7 +14,7 @@
              value="{{ leto }}" min="2010" max="2100">
     </div>
     <button class="btn btn-primary" type="submit">
-      <i class="bi bi-funnel me-1"></i>PrikaĹľi
+      <i class="bi bi-funnel me-1"></i>Prikaži
     </button>
   </form>
 </div>
@@ -28,32 +28,32 @@
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg">
     <div class="card h-100 border-primary"><div class="card-body">
-      <div class="text-muted small">PlaÄŤani ÄŤlani</div>
+      <div class="text-muted small">Plačani člani</div>
       <div class="fs-3 fw-bold">{{ stevilo_placanih }}</div>
     </div></div>
   </div>
   <div class="col-6 col-lg">
     <div class="card h-100 border-success"><div class="card-body">
       <div class="text-muted small">Klub</div>
-      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_klub) }} â‚¬</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_klub) }} €</div>
     </div></div>
   </div>
   <div class="col-6 col-lg">
     <div class="card h-100 border-info"><div class="card-body">
       <div class="text-muted small">ZRS zbrano</div>
-      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs) }} â‚¬</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs) }} €</div>
     </div></div>
   </div>
   <div class="col-6 col-lg">
     <div class="card h-100 border-secondary"><div class="card-body">
       <div class="text-muted small">ZRS nakazano</div>
-      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs_nakazano) }} â‚¬</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs_nakazano) }} €</div>
     </div></div>
   </div>
   <div class="col-6 col-lg">
     <div class="card h-100 border-warning"><div class="card-body">
-      <div class="text-muted small">ÄŚaka nakazilo ZRS</div>
-      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs_caka) }} â‚¬</div>
+      <div class="text-muted small">Čaka nakazilo ZRS</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs_caka) }} €</div>
     </div></div>
   </div>
 </div>
@@ -70,8 +70,8 @@
     </div>
     <div class="col-sm-auto">
       <button type="submit" class="btn btn-outline-success"
-              onclick="return confirm('OznaÄŤim vse plaÄŤane ZRS ÄŤlanarine za leto {{ leto }} kot nakazane?')">
-        <i class="bi bi-check2-all me-1"></i>Vse oznaÄŤi kot nakazano
+              onclick="return confirm('Označim vse plačane ZRS članarine za leto {{ leto }} kot nakazane?')">
+        <i class="bi bi-check2-all me-1"></i>Vse označi kot nakazano
       </button>
     </div>
   </div>
@@ -84,13 +84,13 @@
       <table id="zrsTabela" class="table table-striped table-hover align-middle w-100">
         <thead>
           <tr>
-            <th>ÄŚlan</th>
-            <th>Tip ÄŤlanstva</th>
+            <th>Član</th>
+            <th>Tip članstva</th>
             <th>Vrsta ZRS</th>
             <th>Klub</th>
             <th>ZRS</th>
             <th>Skupaj</th>
-            <th>Datum plaÄŤila</th>
+            <th>Datum plačila</th>
             <th>ZRS nakazano</th>
             <th>Datum nakazila</th>
             <th>Opombe</th>
@@ -116,7 +116,7 @@
               <div class="small text-muted">{{ clan.klicni_znak }}</div>
               {% endif %}
             </td>
-            <td>{{ clan.tip_clanstva or 'â€“' }}</td>
+            <td>{{ clan.tip_clanstva or '–' }}</td>
             <td>
               <select name="zrs_vrsta" form="zrs-form-{{ clan.id }}"
                       class="form-select form-select-sm"
@@ -124,14 +124,14 @@
                 {% for vrsta in zrs_vrste %}
                 <option value="{{ vrsta }}"
                         {% if row.zrs_vrsta == vrsta %}selected{% endif %}>
-                  {{ vrsta }} ({{ '%.2f'|format(zrs_zneski.get(vrsta, 0)) }} â‚¬)
+                  {{ vrsta }} ({{ '%.2f'|format(zrs_zneski.get(vrsta, 0)) }} €)
                 </option>
                 {% endfor %}
               </select>
             </td>
-            <td class="text-nowrap">{{ '%.2f'|format(row.klub_znesek) }} â‚¬</td>
-            <td class="text-nowrap">{{ '%.2f'|format(row.zrs_znesek) }} â‚¬</td>
-            <td class="text-nowrap fw-bold">{{ '%.2f'|format(row.skupaj) }} â‚¬</td>
+            <td class="text-nowrap">{{ '%.2f'|format(row.klub_znesek) }} €</td>
+            <td class="text-nowrap">{{ '%.2f'|format(row.zrs_znesek) }} €</td>
+            <td class="text-nowrap fw-bold">{{ '%.2f'|format(row.skupaj) }} €</td>
             <td>
               <input type="date" name="datum_placila" form="zrs-form-{{ clan.id }}"
                      class="form-control form-control-sm"
@@ -188,9 +188,9 @@ document.addEventListener('DOMContentLoaded', function () {
     pageLength: 25,
     order: [[0, 'asc']],
     language: {
-      search: 'IĹˇÄŤi:',
-      lengthMenu: 'PrikaĹľi _MENU_ ÄŤlanov',
-      info: 'Prikaz _START_â€“_END_ od _TOTAL_',
+      search: 'Išči:',
+      lengthMenu: 'Prikaži _MENU_ članov',
+      info: 'Prikaz _START_–_END_ od _TOTAL_',
       infoEmpty: 'Ni podatkov',
       zeroRecords: 'Ni zadetkov',
       paginate: { previous: 'Nazaj', next: 'Naprej' }

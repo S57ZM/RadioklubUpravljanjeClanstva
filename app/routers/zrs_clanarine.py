@@ -20,8 +20,8 @@ templates.env.globals["csrf_token"] = get_csrf_token
 
 ZRS_PRIVZETO = (
     "Brez ZRS=0.00\n"
-    "Redni ÄŤlan=40.00\n"
-    "DruĹľinski ÄŤlan=20.00\n"
+    "Redni član=40.00\n"
+    "Družinski član=20.00\n"
     "Operater invalid=20.00\n"
     "Mladi do 18 let=20.00"
 )
@@ -284,7 +284,7 @@ async def oznaci_vse_nakazano(
         db,
         user.get("uporabnisko_ime") if user else None,
         "zrs_vse_nakazano",
-        f"Leto {leto}: oznaÄŤenih {len(evidence)} ZRS ÄŤlanarin",
+        f"Leto {leto}: označenih {len(evidence)} ZRS članarin",
         ip=ip,
     )
 

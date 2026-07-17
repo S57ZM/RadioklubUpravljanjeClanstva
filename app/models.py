@@ -86,7 +86,7 @@ class Clanarina(Base):
 
 
 class ZrsClanarina(Base):
-    """LoÄŤena evidenca klubskega in ZRS dela ÄŤlanarine za ÄŤlana in leto."""
+    """Ločena evidenca klubskega in ZRS dela članarine za člana in leto."""
 
     __tablename__ = "zrs_clanarine"
 

@@ -61,14 +61,14 @@ PRIVZETE_NASTAVITVE = {
     "upn_referenca_predloga": ("SI00 {id}-{leto}", "Predloga reference UPN QR – spremenljivke: {leto}, {id}, {es}"),
     "upn_namen": ("OTHR", "Koda namena UPN QR (4 znaki, npr. OTHR)"),
     "upn_opis_predloga": ("Članarina {leto}", "Predloga opisa UPN QR – spremenljivka: {leto}"),
-    "zrs_opis_dopis": (" + ZRS ÄŤlanarina ({zrs_vrsta})", "Dopis pri skupni ZRS ÄŤlanarini"),
+    "zrs_opis_dopis": (" + ZRS članarina ({zrs_vrsta})", "Dopis pri skupni ZRS članarini"),
     "clanarina_zneski": (
         "Osebni=25.00\nMladi=10.00\nDružinski=35.00\nSimpatizerji=15.00\nInvalid=10.00",
         "Zneski članarine po tipu za UPN QR (Tip=Znesek, ena vrstica na tip)",
     ),
     "zrs_clanarina_zneski": (
-        "Brez ZRS=0.00\nRedni ÄŤlan=40.00\nDruĹľinski ÄŤlan=20.00\nOperater invalid=20.00\nMladi do 18 let=20.00",
-        "Zneski ZRS ÄŤlanarine po vrsti (Vrsta=Znesek)",
+        "Brez ZRS=0.00\nRedni član=40.00\nDružinski član=20.00\nOperater invalid=20.00\nMladi do 18 let=20.00",
+        "Zneski ZRS članarine po vrsti (Vrsta=Znesek)",
     ),    "smtp_host": ("", "SMTP strežnik"),
     "smtp_port": ("587", "SMTP vrata"),
     "smtp_nacin": ("starttls", "SMTP način"),
