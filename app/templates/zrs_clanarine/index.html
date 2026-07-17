@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}ZRS ÄŤlanarine â€“ {{ request.state.klub_oznaka or 'Radio klub' }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h4 class="mb-1"><i class="bi bi-bank me-2"></i>Klubska + ZRS ÄŤlanarina</h4>
+    <div class="text-muted">LoÄŤena evidenca klubskega denarja in denarja, zbranega za ZRS.</div>
+  </div>
+  <form method="get" action="/zrs-clanarine" class="d-flex gap-2 align-items-end">
+    <div>
+      <label for="leto" class="form-label mb-1">Leto</label>
+      <input id="leto" name="leto" type="number" class="form-control"
+             value="{{ leto }}" min="2010" max="2100">
+    </div>
+    <button class="btn btn-primary" type="submit">
+      <i class="bi bi-funnel me-1"></i>PrikaĹľi
+    </button>
+  </form>
+</div>
+
+{% if shranjen %}
+<div class="alert alert-success">
+  <i class="bi bi-check-circle me-2"></i>Podatki so shranjeni.
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg">
+    <div class="card h-100 border-primary"><div class="card-body">
+      <div class="text-muted small">PlaÄŤani ÄŤlani</div>
+      <div class="fs-3 fw-bold">{{ stevilo_placanih }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card h-100 border-success"><div class="card-body">
+      <div class="text-muted small">Klub</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_klub) }} â‚¬</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card h-100 border-info"><div class="card-body">
+      <div class="text-muted small">ZRS zbrano</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs) }} â‚¬</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card h-100 border-secondary"><div class="card-body">
+      <div class="text-muted small">ZRS nakazano</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs_nakazano) }} â‚¬</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card h-100 border-warning"><div class="card-body">
+      <div class="text-muted small">ÄŚaka nakazilo ZRS</div>
+      <div class="fs-3 fw-bold">{{ '%.2f'|format(skupaj_zrs_caka) }} â‚¬</div>
+    </div></div>
+  </div>
+</div>
+
+{% if is_editor and skupaj_zrs_caka > 0 %}
+<form method="post" action="/zrs-clanarine/oznaci-vse-nakazano"
+      class="card card-body mb-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+  <input type="hidden" name="leto" value="{{ leto }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-sm-4 col-md-3">
+      <label class="form-label">Datum nakazila ZRS</label>
+      <input type="date" name="datum_nakazila" class="form-control">
+    </div>
+    <div class="col-sm-auto">
+      <button type="submit" class="btn btn-outline-success"
+              onclick="return confirm('OznaÄŤim vse plaÄŤane ZRS ÄŤlanarine za leto {{ leto }} kot nakazane?')">
+        <i class="bi bi-check2-all me-1"></i>Vse oznaÄŤi kot nakazano
+      </button>
+    </div>
+  </div>
+</form>
+{% endif %}
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table id="zrsTabela" class="table table-striped table-hover align-middle w-100">
+        <thead>
+          <tr>
+            <th>ÄŚlan</th>
+            <th>Tip ÄŤlanstva</th>
+            <th>Vrsta ZRS</th>
+            <th>Klub</th>
+            <th>ZRS</th>
+            <th>Skupaj</th>
+            <th>Datum plaÄŤila</th>
+            <th>ZRS nakazano</th>
+            <th>Datum nakazila</th>
+            <th>Opombe</th>
+            <th>UPN</th>
+            {% if is_editor %}<th>Shrani</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in vrstice %}
+          {% set clan = row.clan %}
+          {% set e = row.evidenca %}
+          <tr>
+            <td>
+              <form id="zrs-form-{{ clan.id }}" method="post"
+                    action="/zrs-clanarine/shrani/{{ clan.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+                <input type="hidden" name="leto" value="{{ leto }}">
+              </form>
+              <a href="/clani/{{ clan.id }}" class="fw-semibold text-decoration-none">
+                {{ clan.priimek }} {{ clan.ime }}
+              </a>
+              {% if clan.klicni_znak %}
+              <div class="small text-muted">{{ clan.klicni_znak }}</div>
+              {% endif %}
+            </td>
+            <td>{{ clan.tip_clanstva or 'â€“' }}</td>
+            <td>
+              <select name="zrs_vrsta" form="zrs-form-{{ clan.id }}"
+                      class="form-select form-select-sm"
+                      {% if not is_editor %}disabled{% endif %}>
+                {% for vrsta in zrs_vrste %}
+                <option value="{{ vrsta }}"
+                        {% if row.zrs_vrsta == vrsta %}selected{% endif %}>
+                  {{ vrsta }} ({{ '%.2f'|format(zrs_zneski.get(vrsta, 0)) }} â‚¬)
+                </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="text-nowrap">{{ '%.2f'|format(row.klub_znesek) }} â‚¬</td>
+            <td class="text-nowrap">{{ '%.2f'|format(row.zrs_znesek) }} â‚¬</td>
+            <td class="text-nowrap fw-bold">{{ '%.2f'|format(row.skupaj) }} â‚¬</td>
+            <td>
+              <input type="date" name="datum_placila" form="zrs-form-{{ clan.id }}"
+                     class="form-control form-control-sm"
+                     value="{{ e.datum_placila.isoformat() if e and e.datum_placila else '' }}"
+                     {% if not is_editor %}disabled{% endif %}>
+            </td>
+            <td class="text-center">
+              <input type="checkbox" name="zrs_nakazano" value="1"
+                     form="zrs-form-{{ clan.id }}" class="form-check-input"
+                     {% if e and e.zrs_nakazano %}checked{% endif %}
+                     {% if not is_editor %}disabled{% endif %}>
+            </td>
+            <td>
+              <input type="date" name="datum_zrs_nakazila"
+                     form="zrs-form-{{ clan.id }}"
+                     class="form-control form-control-sm"
+                     value="{{ e.datum_zrs_nakazila.isoformat() if e and e.datum_zrs_nakazila else '' }}"
+                     {% if not is_editor %}disabled{% endif %}>
+            </td>
+            <td>
+              <input type="text" name="opombe" form="zrs-form-{{ clan.id }}"
+                     class="form-control form-control-sm"
+                     value="{{ e.opombe if e and e.opombe else '' }}"
+                     {% if not is_editor %}disabled{% endif %}>
+            </td>
+            <td>
+              <a href="/upn/{{ clan.id }}/{{ leto }}" target="_blank"
+                 class="btn btn-sm btn-outline-primary" title="Skupna UPN QR koda">
+                <i class="bi bi-qr-code"></i>
+              </a>
+            </td>
+            {% if is_editor %}
+            <td>
+              <button type="submit" form="zrs-form-{{ clan.id }}"
+                      class="btn btn-sm btn-success">
+                <i class="bi bi-save"></i>
+              </button>
+            </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  new DataTable('#zrsTabela', {
+    responsive: true,
+    pageLength: 25,
+    order: [[0, 'asc']],
+    language: {
+      search: 'IĹˇÄŤi:',
+      lengthMenu: 'PrikaĹľi _MENU_ ÄŤlanov',
+      info: 'Prikaz _START_â€“_END_ od _TOTAL_',
+      infoEmpty: 'Ni podatkov',
+      zeroRecords: 'Ni zadetkov',
+      paginate: { previous: 'Nazaj', next: 'Naprej' }
+    }
+  });
+});
+</script>
+{% endblock %}

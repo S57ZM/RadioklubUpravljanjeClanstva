@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, Float, ForeignKey, Table, Index, Text
+from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, Float, ForeignKey, Table, Index, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -83,6 +83,29 @@ class Clanarina(Base):
 
     clan = relationship("Clan", back_populates="clanarine")
 
+
+
+class ZrsClanarina(Base):
+    """LoÄŤena evidenca klubskega in ZRS dela ÄŤlanarine za ÄŤlana in leto."""
+
+    __tablename__ = "zrs_clanarine"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("clani.id"), nullable=False, index=True)
+    leto = Column(Integer, nullable=False, index=True)
+    zrs_vrsta = Column(String, nullable=False, default="Brez ZRS")
+    klub_znesek = Column(Float, nullable=False, default=0.0)
+    zrs_znesek = Column(Float, nullable=False, default=0.0)
+    datum_placila = Column(Date, nullable=True)
+    zrs_nakazano = Column(Boolean, nullable=False, default=False)
+    datum_zrs_nakazila = Column(Date, nullable=True)
+    opombe = Column(String, nullable=True)
+
+    clan = relationship("Clan")
+
+    __table_args__ = (
+        UniqueConstraint("clan_id", "leto", name="uq_zrs_clan_leto"),
+    )
 
 class Aktivnost(Base):
     __tablename__ = "aktivnosti"

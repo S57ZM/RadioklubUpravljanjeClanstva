@@ -29,7 +29,7 @@ from .csrf import get_csrf_token, csrf_protect
 from .audit_log import log_akcija
 from .rate_limit import check_rate_limit, record_failed_attempt
 from .email_predloge_seed import seed_predloge
-from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, obvestila as obvestila_router
+from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, zrs_clanarine, obvestila as obvestila_router
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 # Varnostne nastavitve
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "1.28"
-APP_RELEASE_DATE = "2026-05-08"
+APP_VERSION = "1.29-s50ttt"
+APP_RELEASE_DATE = "2026-07-17"
 
 # Preberi LICENSE ob zagonu (enkrat, ne ob vsaki zahtevi)
 try:
@@ -61,11 +61,15 @@ PRIVZETE_NASTAVITVE = {
     "upn_referenca_predloga": ("SI00 {id}-{leto}", "Predloga reference UPN QR – spremenljivke: {leto}, {id}, {es}"),
     "upn_namen": ("OTHR", "Koda namena UPN QR (4 znaki, npr. OTHR)"),
     "upn_opis_predloga": ("Članarina {leto}", "Predloga opisa UPN QR – spremenljivka: {leto}"),
+    "zrs_opis_dopis": (" + ZRS ÄŤlanarina ({zrs_vrsta})", "Dopis pri skupni ZRS ÄŤlanarini"),
     "clanarina_zneski": (
         "Osebni=25.00\nMladi=10.00\nDružinski=35.00\nSimpatizerji=15.00\nInvalid=10.00",
         "Zneski članarine po tipu za UPN QR (Tip=Znesek, ena vrstica na tip)",
     ),
-    "smtp_host": ("", "SMTP strežnik"),
+    "zrs_clanarina_zneski": (
+        "Brez ZRS=0.00\nRedni ÄŤlan=40.00\nDruĹľinski ÄŤlan=20.00\nOperater invalid=20.00\nMladi do 18 let=20.00",
+        "Zneski ZRS ÄŤlanarine po vrsti (Vrsta=Znesek)",
+    ),    "smtp_host": ("", "SMTP strežnik"),
     "smtp_port": ("587", "SMTP vrata"),
     "smtp_nacin": ("starttls", "SMTP način"),
     "smtp_uporabnik": ("", "SMTP uporabniško ime"),
@@ -313,6 +317,7 @@ app.include_router(audit.router)
 app.include_router(dashboard.router)
 app.include_router(vloge.router)
 app.include_router(upn.router)
+app.include_router(zrs_clanarine.router)
 app.include_router(obvestila_router.router)
 
 

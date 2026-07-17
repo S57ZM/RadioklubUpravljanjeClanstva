@@ -3,12 +3,45 @@ from fastapi.responses import Response, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Clan
+from ..models import Clan, ZrsClanarina
 from ..auth import require_login
 from ..config import get_nastavitev, get_clanarina_zneski
 from ..upn import generiraj_upn_svg, generiraj_upn_png
 
 router = APIRouter(prefix="/upn")
+
+def _dodaj_zrs(
+    db: Session,
+    clan: Clan,
+    leto: int,
+    osnovni_znesek: float | None,
+) -> tuple[float | None, str]:
+    evidenca = (
+        db.query(ZrsClanarina)
+        .filter(
+            ZrsClanarina.clan_id == clan.id,
+            ZrsClanarina.leto == leto,
+        )
+        .first()
+    )
+
+    if not evidenca or not evidenca.zrs_znesek:
+        return osnovni_znesek, ""
+
+    klub = (
+        float(evidenca.klub_znesek)
+        if evidenca.klub_znesek is not None
+        else float(osnovni_znesek or 0.0)
+    )
+    skupaj = klub + float(evidenca.zrs_znesek or 0.0)
+
+    dopis = get_nastavitev(
+        db,
+        "zrs_opis_dopis",
+        " + ZRS članarina ({zrs_vrsta})",
+    )
+    dopis = dopis.replace("{zrs_vrsta}", evidenca.zrs_vrsta or "")
+    return skupaj, dopis
 
 
 @router.get("/{clan_id}/{leto}")
@@ -43,6 +76,9 @@ async def upn_qr(
 
     zneski = get_clanarina_zneski(db)
     znesek = zneski.get(clan.tip_clanstva) if clan.tip_clanstva else None
+    znesek, zrs_dopis = _dodaj_zrs(db, clan, leto, znesek)
+    if zrs_dopis:
+        opis = f"{opis}{zrs_dopis}"
 
     svg = generiraj_upn_svg(
         ime_placnika=f"{clan.priimek} {clan.ime}",
@@ -93,6 +129,9 @@ async def upn_qr_png(
 
     zneski = get_clanarina_zneski(db)
     znesek = zneski.get(clan.tip_clanstva) if clan.tip_clanstva else None
+    znesek, zrs_dopis = _dodaj_zrs(db, clan, leto, znesek)
+    if zrs_dopis:
+        opis = f"{opis}{zrs_dopis}"
 
     png = generiraj_upn_png(
         ime_placnika=f"{clan.priimek} {clan.ime}",
