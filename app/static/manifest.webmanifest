@@ -1,0 +1,46 @@
+{
+  "id": "/",
+  "name": "S50TTT Clani",
+  "short_name": "S50TTT",
+  "description": "Evidenca clanov, klubskih in ZRS clanarin Radiokluba Sevnica S50TTT.",
+  "lang": "sl",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0d3b66",
+  "theme_color": "#0d3b66",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Clani",
+      "short_name": "Clani",
+      "url": "/clani"
+    },
+    {
+      "name": "ZRS clanarine",
+      "short_name": "ZRS",
+      "url": "/zrs-clanarine"
+    },
+    {
+      "name": "Placila",
+      "short_name": "Placila",
+      "url": "/clanarine"
+    }
+  ]
+}

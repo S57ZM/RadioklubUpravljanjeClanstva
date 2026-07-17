@@ -325,6 +325,24 @@ app.include_router(obvestila_router.router)
 # Osnove poti
 # ---------------------------------------------------------------------------
 
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def pwa_manifest() -> FileResponse:
+    path = os.path.join(os.path.dirname(__file__), "static", "manifest.webmanifest")
+    response = FileResponse(path, media_type="application/manifest+json")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.get("/service-worker.js", include_in_schema=False)
+async def pwa_service_worker() -> FileResponse:
+    path = os.path.join(os.path.dirname(__file__), "static", "service-worker.js")
+    response = FileResponse(path, media_type="application/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
