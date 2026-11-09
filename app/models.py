@@ -79,6 +79,16 @@ class Clanarina(Base):
     znesek = Column(String, nullable=True)
     opombe = Column(String, nullable=True)
 
+    poziv_poslan_ob = Column(DateTime, nullable=True)
+    poziv_email = Column(String, nullable=True)
+    poziv_status = Column(
+        String,
+        nullable=False,
+        default="ni_poslano",
+    )
+    poziv_napaka = Column(Text, nullable=True)
+    poziv_poskusi = Column(Integer, nullable=False, default=0)
+
     clan = relationship("Clan", back_populates="clanarine")
 
 
@@ -260,3 +270,67 @@ class EmailPredloga(Base):
     vkljuci_qr = Column(Boolean, default=False, nullable=False)
     prilozi_kartico = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ClanPodatkiToken(Base):
+    """Varnostni žeton za preverjanje oziroma popravljanje podatkov člana."""
+
+    __tablename__ = "clan_podatki_tokeni"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("clani.id"), nullable=False, index=True)
+
+    # V bazi hranimo samo hash žetona, ne dejanskega žetona iz povezave.
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    uporabljen_at = Column(DateTime(timezone=True), nullable=True)
+
+    clan = relationship("Clan")
+
+
+class ClanSprememba(Base):
+    """Zahteva člana za preverjanje ali spremembo svojih podatkov."""
+
+    __tablename__ = "clan_spremembe"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("clani.id"), nullable=False, index=True)
+    token_id = Column(
+        Integer,
+        ForeignKey("clan_podatki_tokeni.id"),
+        nullable=True,
+        index=True,
+    )
+
+    # Posnetek podatkov, ki jih je član oddal.
+    naslov_ulica = Column(String, nullable=True)
+    naslov_posta = Column(String, nullable=True)
+    elektronska_posta = Column(String, nullable=True)
+    mobilni_telefon = Column(String, nullable=True)
+    telefon_doma = Column(String, nullable=True)
+
+    # true = član je samo potrdil, da so obstoječi podatki pravilni.
+    podatki_pravilni = Column(Boolean, nullable=False, default=False)
+
+    status = Column(String, nullable=False, default="caka", index=True)
+    opomba_clana = Column(Text, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    obravnavano_at = Column(DateTime(timezone=True), nullable=True)
+    obravnaval = Column(String, nullable=True)
+    opomba_admin = Column(Text, nullable=True)
+
+    clan = relationship("Clan")
+    token = relationship("ClanPodatkiToken")
+
+

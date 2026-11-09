@@ -332,6 +332,7 @@ async def detail(request: Request, clan_id: int, db: Session = Depends(get_db)) 
 
     flash_success = request.session.pop("flash_success", None)
     flash_warning = request.session.pop("flash_warning", None)
+    flash_podatki_link = request.session.pop("flash_podatki_link", None)
 
     return templates.TemplateResponse(
         request,
@@ -350,6 +351,7 @@ async def detail(request: Request, clan_id: int, db: Session = Depends(get_db)) 
             "is_admin": is_admin(user),
             "flash_success": flash_success,
             "flash_warning": flash_warning,
+            "flash_podatki_link": flash_podatki_link,
         },
     )
 

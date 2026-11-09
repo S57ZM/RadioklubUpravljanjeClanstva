@@ -3,8 +3,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from ..auth import require_login
+from ..auth import require_login, is_admin, is_editor
 from ..database import get_db
+from ..csrf import get_csrf_token
 from ..models import Clan
 from ..placilo import (
     generiraj_epc_png,
@@ -16,6 +17,7 @@ from ..placilo import (
 
 router = APIRouter(prefix="/placilo")
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["csrf_token"] = get_csrf_token
 
 
 def _nalozi(
@@ -50,6 +52,8 @@ async def predogled(
         {
             "request": request,
             "user": user,
+            "is_editor": is_editor(user),
+            "is_admin": is_admin(user),
             "clan": clan,
             "leto": leto,
             "placilo": podatki,

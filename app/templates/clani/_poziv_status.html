@@ -1,0 +1,94 @@
+{% set c = clanarine_dict.get(leto_zdaj) %}
+
+<div class="border rounded p-3 mt-3 bg-light">
+  <div class="mb-2">
+    <strong>Plačilni poziv:</strong>
+
+    {% if c and c.poziv_status == "poslano" %}
+      <span class="badge bg-success">Poslano</span>
+
+      {% if c.poziv_poslan_ob %}
+        <span class="ms-1">
+          {{ c.poziv_poslan_ob.strftime('%d. %m. %Y ob %H:%M') }}
+        </span>
+      {% endif %}
+
+      <div class="small text-muted mt-1">
+        Prejemnik: {{ c.poziv_email }}
+      </div>
+
+    {% elif c and c.poziv_status == "napaka" %}
+      <span class="badge bg-danger">Napaka pri pošiljanju</span>
+
+      <div class="small text-danger mt-1">
+        {{ c.poziv_napaka }}
+      </div>
+
+    {% else %}
+      <span class="badge bg-secondary">Ni poslano</span>
+    {% endif %}
+  </div>
+
+  <div class="mb-3">
+    <strong>Plačilo:</strong>
+
+    {% if c and c.datum_placila %}
+      <span class="badge bg-success">Plačano</span>
+      <span class="ms-1">
+        {{ c.datum_placila.strftime('%d. %m. %Y') }}
+      </span>
+    {% else %}
+      <span class="badge bg-warning text-dark">
+        Čaka na plačilo
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <form method="post"
+          action="/placilo/{{ clan.id }}/{{ leto_zdaj }}/poslji-poziv">
+
+      <input type="hidden"
+             name="csrf_token"
+             value="{{ csrf_token(request) }}">
+
+      <button class="btn btn-primary"
+              type="submit"
+              {% if not clan.elektronska_posta %}disabled{% endif %}
+              onclick="return confirm('Pošljem plačilni poziv po e-pošti?')">
+
+        <i class="bi bi-envelope me-1"></i>
+
+        {% if c and c.poziv_status == "poslano" %}
+          Pošlji ponovno
+        {% else %}
+          Pošlji po e-pošti
+        {% endif %}
+      </button>
+    </form>
+
+    {% if not c or not c.datum_placila %}
+      <form method="post"
+            action="/placilo/{{ clan.id }}/{{ leto_zdaj }}/placano-danes">
+
+        <input type="hidden"
+               name="csrf_token"
+               value="{{ csrf_token(request) }}">
+
+        <button class="btn btn-success"
+                type="submit"
+                onclick="return confirm('Označim članarino kot plačano danes?')">
+
+          <i class="bi bi-check-circle me-1"></i>
+          Plačano danes
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if not clan.elektronska_posta %}
+    <div class="small text-danger mt-2">
+      Član nima vpisanega e-poštnega naslova.
+    </div>
+  {% endif %}
+</div>

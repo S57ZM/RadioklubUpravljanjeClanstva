@@ -1,9 +1,12 @@
-const CACHE_NAME = "s50ttt-pwa-v1";
+const CACHE_NAME = "s50ttt-pwa-v2";
 const STATIC_ASSETS = [
   "/static/offline.html",
-  "/static/manifest.webmanifest",
+  "/manifest.webmanifest",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
+  "/static/icons/icon-maskable-512.png",
+  "/static/icons/apple-touch-icon.png",
+  "/static/icons/favicon-32.png",
   "/static/pwa-install.js"
 ];
 

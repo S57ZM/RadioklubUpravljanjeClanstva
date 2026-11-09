@@ -7,7 +7,7 @@ from alembic import op
 
 
 revision = "012_pooblascene_vloge"
-down_revision = "011_dostopne_prosnje"
+down_revision = "012_registracijske_prosnje"
 branch_labels = None
 depends_on = None
 

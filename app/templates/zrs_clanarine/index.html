@@ -19,6 +19,18 @@
   </form>
 </div>
 
+{% if request.query_params.get("placilo") == "potrjeno" %}
+<div class="alert alert-success">
+  <i class="bi bi-check-circle me-2"></i>
+  Plačilo člana je označeno kot plačano danes.
+</div>
+{% elif request.query_params.get("placilo") == "preklicano" %}
+<div class="alert alert-warning">
+  <i class="bi bi-arrow-counterclockwise me-2"></i>
+  Potrditev plačila je odstranjena.
+</div>
+{% endif %}
+
 {% if shranjen %}
 <div class="alert alert-success">
   <i class="bi bi-check-circle me-2"></i>Podatki so shranjeni.
@@ -90,7 +102,7 @@
             <th>Klub</th>
             <th>ZRS</th>
             <th>Skupaj</th>
-            <th>Datum plačila</th>
+            <th>Plačilo člana</th>
             <th>ZRS nakazano</th>
             <th>Datum nakazila</th>
             <th>Opombe</th>
@@ -128,16 +140,73 @@
                 </option>
                 {% endfor %}
               </select>
+<div class="mt-2 d-grid">
+  <button type="submit"
+          form="zrs-form-{{ clan.id }}"
+          class="btn btn-sm btn-primary zrs-save-near-select">
+    <i class="bi bi-save me-1"></i>
+    Shrani izbiro ZRS
+  </button>
+</div>
+<div class="small text-muted mt-1">
+  Izbira se shrani šele po kliku na ta gumb.
+</div>
+
             </td>
             <td class="text-nowrap">{{ '%.2f'|format(row.klub_znesek) }} €</td>
             <td class="text-nowrap">{{ '%.2f'|format(row.zrs_znesek) }} €</td>
             <td class="text-nowrap fw-bold">{{ '%.2f'|format(row.skupaj) }} €</td>
-            <td>
-              <input type="date" name="datum_placila" form="zrs-form-{{ clan.id }}"
-                     class="form-control form-control-sm"
-                     value="{{ e.datum_placila.isoformat() if e and e.datum_placila else '' }}"
-                     {% if not is_editor %}disabled{% endif %}>
-            </td>
+            <td style="min-width: 190px">
+  {% if row.datum_placila %}
+  <div class="mb-2">
+    <span class="badge text-bg-success">
+      <i class="bi bi-check-circle me-1"></i>
+      Plačano {{ row.datum_placila.strftime('%d. %m. %Y') }}
+    </span>
+  </div>
+  {% else %}
+  <div class="mb-2">
+    <span class="badge text-bg-warning">
+      <i class="bi bi-hourglass-split me-1"></i>
+      Čaka plačilo
+    </span>
+  </div>
+  {% endif %}
+
+  <input type="date"
+         name="datum_placila"
+         form="zrs-form-{{ clan.id }}"
+         class="form-control form-control-sm mb-2"
+         value="{{ row.datum_placila.isoformat() if row.datum_placila else '' }}"
+         {% if not is_editor %}disabled{% endif %}>
+
+  {% if is_editor %}
+  <div class="d-flex flex-wrap gap-1">
+    {% if not row.datum_placila %}
+    <button type="submit"
+            form="zrs-form-{{ clan.id }}"
+            formaction="/zrs-clanarine/placilo/{{ clan.id }}"
+            formmethod="post"
+            name="akcija"
+            value="placano"
+            class="btn btn-sm btn-success">
+      <i class="bi bi-check2 me-1"></i>Plačano danes
+    </button>
+    {% else %}
+    <button type="submit"
+            form="zrs-form-{{ clan.id }}"
+            formaction="/zrs-clanarine/placilo/{{ clan.id }}"
+            formmethod="post"
+            name="akcija"
+            value="neplacano"
+            class="btn btn-sm btn-outline-danger"
+            onclick="return confirm('Odstranim potrditev plačila za tega člana?')">
+      <i class="bi bi-x-circle me-1"></i>Prekliči
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+</td>
             <td class="text-center">
               <input type="checkbox" name="zrs_nakazano" value="1"
                      form="zrs-form-{{ clan.id }}" class="form-check-input"
@@ -198,4 +267,25 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+
+<script id="zrs-save-button-feedback">
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll('select[name="zrs_vrsta"]').forEach(function (select) {
+    select.addEventListener("change", function () {
+      const cell = select.closest("td");
+      const button = cell
+        ? cell.querySelector(".zrs-save-near-select")
+        : null;
+
+      if (!button) return;
+
+      button.classList.remove("btn-primary");
+      button.classList.add("btn-warning");
+      button.innerHTML =
+        '<i class="bi bi-exclamation-circle me-1"></i>Shrani spremembo';
+    });
+  });
+});
+</script>
+
 {% endblock %}

@@ -10,3 +10,13 @@ venv/
 .claude/
 *.xlsx
 ~$*
+
+# Lokalni testni podatki
+data-*-test/
+data-migration-test/
+
+# Lokalne varnostne kopije
+*.bak-*
+*.backup-*
+*.bak
+*.backup

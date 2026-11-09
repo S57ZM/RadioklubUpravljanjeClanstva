@@ -24,6 +24,19 @@
     <a href="/clani/{{ clan.id }}/uredi" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-pencil me-1"></i>Uredi
     </a>
+
+    <form method="post"
+          action="/clani/{{ clan.id }}/podatki-link"
+          class="d-inline"
+          onsubmit="return confirm('Ustvarim novo povezavo za preverjanje podatkov? Prejšnja povezava bo razveljavljena.');">
+      <input type="hidden"
+             name="csrf_token"
+             value="{{ csrf_token(request) }}">
+      <button type="submit"
+              class="btn btn-outline-success btn-sm">
+        <i class="bi bi-link-45deg me-1"></i>Preverjanje podatkov
+      </button>
+    </form>
     {% if clan.elektronska_posta and '@' in clan.elektronska_posta %}
     <a href="/obvestila/posli?clan_id={{ clan.id }}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-envelope me-1"></i>Pošlji obvestilo
@@ -49,6 +62,50 @@
     {% endif %}
   </div>
 </div>
+
+{% if flash_podatki_link %}
+<div class="alert alert-success no-print">
+  <div class="fw-semibold mb-2">
+    <i class="bi bi-link-45deg me-1"></i>
+    Povezava za preverjanje podatkov je pripravljena
+  </div>
+
+  <div class="input-group">
+    <input type="text"
+           class="form-control"
+           id="podatki-link"
+           value="{{ flash_podatki_link }}"
+           readonly>
+
+    <button type="button"
+            class="btn btn-success"
+            onclick="kopirajPodatkiLink(this)">
+      <i class="bi bi-clipboard me-1"></i>
+      Kopiraj povezavo
+    </button>
+  </div>
+
+  <div class="small mt-2">
+    <i class="bi bi-clock me-1"></i>
+    Povezava velja 14 dni. Ustvarjanje nove povezave razveljavi prejšnjo.
+  </div>
+</div>
+
+<script>
+async function kopirajPodatkiLink(gumb) {
+  const polje = document.getElementById("podatki-link");
+
+  try {
+    await navigator.clipboard.writeText(polje.value);
+    gumb.innerHTML = '<i class="bi bi-check-lg me-1"></i>Kopirano';
+  } catch (e) {
+    polje.select();
+    document.execCommand("copy");
+    gumb.innerHTML = '<i class="bi bi-check-lg me-1"></i>Kopirano';
+  }
+}
+</script>
+{% endif %}
 
 {% if flash_success %}
 <div class="alert alert-success alert-dismissible fade show">
@@ -132,7 +189,129 @@
   <!-- Kontaktni podatki -->
   <div class="col-lg-6">
     <div class="card h-100">
-      <div class="card-header bg-secondary text-white">
+      
+{% if is_editor %}
+<div class="card mb-4" id="zrs-izbira-clana">
+  <div class="card-header bg-success text-white">
+    <strong>
+      <i class="bi bi-credit-card me-2"></i>
+      Članarina in priprava plačila
+    </strong>
+  </div>
+
+  <div class="card-body">
+    <form method="post"
+          action="/placilo/{{ clan.id }}/{{ leto_zdaj }}/zrs"
+          class="row g-3 align-items-end">
+      <input type="hidden"
+             name="csrf_token"
+             value="{{ csrf_token(request) }}">
+
+      <div class="col-lg-6">
+        <label class="form-label"
+               for="zrs-vrsta-{{ clan.id }}">
+          ZRS članarina za leto {{ leto_zdaj }}
+        </label>
+
+        <select class="form-select"
+                id="zrs-vrsta-{{ clan.id }}"
+                name="zrs_vrsta">
+          <option value="Brez ZRS" data-znesek="0">
+            Brez ZRS – 0,00 €
+          </option>
+          <option value="Redni član" data-znesek="40">
+            Redni član – 40,00 €
+          </option>
+          <option value="Družinski član" data-znesek="20">
+            Družinski član – 20,00 €
+          </option>
+          <option value="Operater invalid" data-znesek="20">
+            Operater invalid – 20,00 €
+          </option>
+          <option value="Mladi do 18 let" data-znesek="20">
+            Mladi do 18 let – 20,00 €
+          </option>
+        </select>
+
+        <div class="form-text">
+          Izbrani znesek se prišteje klubski članarini.
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="small text-muted">
+          Skupaj za plačilo
+        </div>
+        <div class="fs-4 fw-bold text-success"
+             id="zrs-skupaj-{{ clan.id }}">
+          …
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3 d-grid">
+        <button class="btn btn-success" type="submit">
+          <i class="bi bi-check2-circle me-1"></i>
+          Shrani in odpri plačilo
+        </button>
+      </div>
+    </form>
+
+    <div class="mt-3">
+      <a class="btn btn-outline-success"
+         href="/placilo/{{ clan.id }}/{{ leto_zdaj }}">
+        <i class="bi bi-eye me-1"></i>
+        Odpri trenutni predogled plačila
+      </a>
+    {% include "clani/_poziv_status.html" %}
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const clanId = {{ clan.id }};
+  const leto = {{ leto_zdaj }};
+  const select = document.getElementById(`zrs-vrsta-${clanId}`);
+  const total = document.getElementById(`zrs-skupaj-${clanId}`);
+
+  if (!select || !total) return;
+
+  let clubAmount = 0;
+
+  const euro = (value) =>
+    Number(value || 0).toFixed(2).replace(".", ",") + " €";
+
+  const updateTotal = () => {
+    const option = select.options[select.selectedIndex];
+    const zrsAmount = Number(option?.dataset.znesek || 0);
+    total.textContent = euro(clubAmount + zrsAmount);
+  };
+
+  select.addEventListener("change", updateTotal);
+
+  fetch(`/placilo/${clanId}/${leto}/zrs-stanje`, {
+    credentials: "same-origin",
+    cache: "no-store"
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("Stanja ni mogoče prebrati.");
+      return response.json();
+    })
+    .then((data) => {
+      clubAmount = Number(data.klub_znesek || 0);
+      if (data.izbrana) {
+        select.value = data.izbrana;
+      }
+      updateTotal();
+    })
+    .catch(() => {
+      total.textContent = "Izračun ob shranjevanju";
+    });
+})();
+</script>
+{% endif %}
+
+<div class="card-header bg-secondary text-white">
         <i class="bi bi-envelope-fill me-2"></i>Kontakt in naslov
       </div>
       <div class="card-body">
@@ -221,7 +400,19 @@
             </div>
             <div class="col-md-3">
               <label class="form-label small mb-1">Opomba</label>
-              <input type="text" name="opombe" class="form-control form-control-sm" placeholder="Neobvezno...">
+              <input type="text" name="opombe" class="form-control form-control-sm" placeholder="Izberi predlogo ali napiši svojo opombo..." list="clanarina-opombe-predloge">
+
+<datalist id="clanarina-opombe-predloge">
+  <option value="Plačana članarina">
+  <option value="Plačana članarina + ZRS">
+  <option value="Plačana samo ZRS članarina">
+  <option value="Delno plačilo">
+  <option value="Oproščen plačila">
+  <option value="Donacija">
+  <option value="Plačilo za preteklo leto">
+  <option value="Drugo – vpiši svojo opombo">
+</datalist>
+
             </div>
             <div class="col-md-2">
               <button type="submit" class="btn btn-success btn-sm w-100">
@@ -478,7 +669,7 @@
             <div class="col-md-3">
               <label class="form-label small mb-1">Opombe</label>
               <input type="text" name="opombe" class="form-control form-control-sm"
-                     placeholder="Neobvezno...">
+                     placeholder="Izberi predlogo ali napiši svojo opombo..." list="clanarina-opombe-predloge">
             </div>
             <div class="col-md-2">
               <button type="submit" class="btn btn-warning btn-sm w-100">
@@ -585,7 +776,7 @@
           </div>
           <div class="mb-2">
             <label class="form-label small mb-1">Opomba</label>
-            <input type="text" name="opombe" id="urediClanarinaOpombe" class="form-control form-control-sm" placeholder="Neobvezno...">
+            <input type="text" name="opombe" id="urediClanarinaOpombe" class="form-control form-control-sm" placeholder="Izberi predlogo ali napiši svojo opombo..." list="clanarina-opombe-predloge">
           </div>
         </div>
         <div class="modal-footer py-2">
@@ -826,4 +1017,5 @@ if (modalUrediVlogo) {
   });
 }
 </script>
+<script src="/static/js/clanarina-opombe-znesek.js?v=143"></script>
 {% endblock %}

@@ -1,0 +1,148 @@
+.qr-grid .qr-card {
+  height: 100%;
+  overflow: visible;
+}
+
+.qr-grid .qr-card img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 220px;
+  max-height: 220px;
+  margin: 0 auto;
+  padding: 8px;
+  background: #fff;
+  object-fit: contain;
+}
+
+@media screen and (min-width: 768px) {
+  .qr-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .qr-grid > .col-lg-6 {
+    width: auto;
+    max-width: none;
+    padding: 0;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 7mm;
+}
+
+@media print {
+  html,
+  body {
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .payment-sheet {
+    width: 196mm !important;
+    max-width: 196mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .payment-document {
+    margin: 0 0 4mm !important;
+    break-inside: avoid !important;
+  }
+
+  .payment-document__head {
+    padding: 3mm 4mm !important;
+  }
+
+  .payment-document__head h3 {
+    font-size: 14pt !important;
+  }
+
+  .payment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .payment-field {
+    min-height: 0 !important;
+    padding: 2mm 3mm !important;
+  }
+
+  .payment-label {
+    margin-bottom: 0.5mm !important;
+    font-size: 7pt !important;
+  }
+
+  .payment-value {
+    font-size: 8.5pt !important;
+    line-height: 1.15 !important;
+  }
+
+  .payment-amount {
+    font-size: 15pt !important;
+  }
+
+  .qr-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4mm !important;
+    margin: 0 !important;
+    break-inside: avoid !important;
+  }
+
+  .qr-grid > .col-lg-6 {
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .qr-card {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 3mm !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+  }
+
+  .qr-card h4 {
+    margin: 0 0 1mm !important;
+    font-size: 10pt !important;
+  }
+
+  .qr-card p {
+    min-height: 8mm;
+    margin: 0 0 2mm !important;
+    font-size: 7pt !important;
+    line-height: 1.15 !important;
+  }
+
+  .qr-card img {
+    display: block !important;
+    width: 40mm !important;
+    max-width: 40mm !important;
+    max-height: 40mm !important;
+    height: auto !important;
+    margin: 0 auto !important;
+    padding: 1.5mm !important;
+    background: #fff !important;
+    object-fit: contain !important;
+    box-sizing: content-box !important;
+  }
+
+  .alert-info {
+    margin: 3mm 0 0 !important;
+    padding: 2mm 3mm !important;
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+    break-inside: avoid !important;
+  }
+}

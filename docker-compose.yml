@@ -9,8 +9,8 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - SECRET_KEY=${SECRET_KEY:-zamenjajte-z-dolgim-nakljucnim-nizom}
-      - ADMIN_GESLO=${ADMIN_GESLO:-admin123}
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_GESLO=${ADMIN_GESLO}
       - KLUB_IME=${KLUB_IME:-}
       - KLUB_OZNAKA=${KLUB_OZNAKA:-}
       - OKOLJE=produkcija

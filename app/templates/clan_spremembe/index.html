@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">Spremembe podatkov članov</h2>
+      <div class="text-secondary">
+        Predlogi članov, ki čakajo na pregled.
+      </div>
+    </div>
+
+    <span class="badge text-bg-warning fs-6">
+      {{ spremembe|length }} čakajočih
+    </span>
+  </div>
+
+  {% if not spremembe %}
+    <div class="alert alert-success">
+      <i class="bi bi-check-circle me-1"></i>
+      Ni čakajočih sprememb.
+    </div>
+  {% endif %}
+
+  {% for s in spremembe %}
+    {% set c = s.clan %}
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">
+        <strong>{{ c.ime }} {{ c.priimek }}</strong>
+        {% if c.klicni_znak %}
+          <span class="badge text-bg-secondary ms-2">
+            {{ c.klicni_znak }}
+          </span>
+        {% endif %}
+
+        <span class="float-end text-secondary small">
+          {{ s.created_at }}
+        </span>
+      </div>
+
+      <div class="card-body">
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Podatek</th>
+                <th>Trenutno</th>
+                <th>Predlagano</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr>
+                <td>Naslov</td>
+                <td>{{ c.naslov_ulica or "—" }}</td>
+                <td>{{ s.naslov_ulica or "—" }}</td>
+              </tr>
+
+              <tr>
+                <td>Pošta / kraj</td>
+                <td>{{ c.naslov_posta or "—" }}</td>
+                <td>{{ s.naslov_posta or "—" }}</td>
+              </tr>
+
+              <tr>
+                <td>E-pošta</td>
+                <td>{{ c.elektronska_posta or "—" }}</td>
+                <td>{{ s.elektronska_posta or "—" }}</td>
+              </tr>
+
+              <tr>
+                <td>Mobilni telefon</td>
+                <td>{{ c.mobilni_telefon or "—" }}</td>
+                <td>{{ s.mobilni_telefon or "—" }}</td>
+              </tr>
+
+              <tr>
+                <td>Domači telefon</td>
+                <td>{{ c.telefon_doma or "—" }}</td>
+                <td>{{ s.telefon_doma or "—" }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {% if s.opomba_clana %}
+          <div class="alert alert-light border mt-3">
+            <strong>Opomba člana:</strong><br>
+            {{ s.opomba_clana }}
+          </div>
+        {% endif %}
+
+        <div class="mt-3 d-flex flex-wrap gap-2">
+
+        <form method="post"
+              action="/admin/spremembe-podatkov/{{ s.id }}/potrdi"
+              onsubmit="return confirm('Potrdim spremembo podatkov za tega člana?');">
+
+          <input type="hidden"
+                 name="csrf_token"
+                 value="{{ csrf_token(request) }}">
+
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-lg me-1"></i>
+            Potrdi spremembe
+          </button>
+        </form>
+
+        <form method="post"
+              action="/admin/spremembe-podatkov/{{ s.id }}/zavrni"
+              onsubmit="return confirm('Zavrnem to zahtevo za spremembo podatkov?');">
+
+          <input type="hidden"
+                 name="csrf_token"
+                 value="{{ csrf_token(request) }}">
+
+          <input type="hidden"
+                 name="opomba_admin"
+                 value="Zavrnjeno pri pregledu">
+
+          <button type="submit" class="btn btn-outline-danger">
+            <i class="bi bi-x-lg me-1"></i>
+            Zavrni
+          </button>
+        </form>
+
+        </div>
+
+      </div>
+    </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

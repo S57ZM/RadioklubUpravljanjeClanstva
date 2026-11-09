@@ -33,14 +33,17 @@ from .email_predloge_seed import seed_predloge
 from .routers import clani, clanarine, izvoz, uporabniki, nastavitve, profil, aktivnosti, skupine, audit, dashboard, vloge, upn, zrs_clanarine, obvestila as obvestila_router
 from .routers import moj_profil
 from .routers import placilo
+from .routers import pozivi_clanarina
+from .routers import clan_podatki
 
+from .routers import zrs_izbira
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Varnostne nastavitve
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "1.32-s50ttt"
+APP_VERSION = "1.41-s50ttt"
 APP_RELEASE_DATE = "2026-07-17"
 
 # Preberi LICENSE ob zagonu (enkrat, ne ob vsaki zahtevi)
@@ -458,6 +461,9 @@ app.include_router(dashboard.router)
 app.include_router(vloge.router)
 app.include_router(upn.router)
 app.include_router(placilo.router)
+app.include_router(pozivi_clanarina.router)
+app.include_router(clan_podatki.router)
+app.include_router(zrs_izbira.router)
 app.include_router(zrs_clanarine.router)
 app.include_router(obvestila_router.router)
 

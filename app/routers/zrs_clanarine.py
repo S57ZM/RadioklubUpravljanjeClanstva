@@ -78,6 +78,10 @@ async def seznam(
             .all()
         )
     }
+    placila_po_clanu = {
+        clanarina.clan_id: clanarina.datum_placila
+        for clanarina in db.query(Clanarina).filter(Clanarina.leto == izbrano_leto).all()
+    }
 
     klub_zneski = get_clanarina_zneski(db)
     zrs_zneski = _zrs_zneski(db)
@@ -90,6 +94,7 @@ async def seznam(
 
     for clan in clani:
         evidenca = evidence.get(clan.id)
+        datum_placila = placila_po_clanu.get(clan.id)
         klub_znesek = (
             float(evidenca.klub_znesek or 0.0)
             if evidenca
@@ -102,7 +107,7 @@ async def seznam(
             else float(zrs_zneski.get(zrs_vrsta, 0.0) or 0.0)
         )
 
-        if evidenca and evidenca.datum_placila:
+        if datum_placila:
             stevilo_placanih += 1
             skupaj_klub += klub_znesek
             skupaj_zrs += zrs_znesek
@@ -113,6 +118,7 @@ async def seznam(
             {
                 "clan": clan,
                 "evidenca": evidenca,
+                "datum_placila": datum_placila,
                 "klub_znesek": klub_znesek,
                 "zrs_vrsta": zrs_vrsta,
                 "zrs_znesek": zrs_znesek,
@@ -243,6 +249,129 @@ async def shrani(
         status_code=302,
     )
 
+
+@router.post("/placilo/{clan_id}")
+async def hitro_placilo(
+    request: Request,
+    clan_id: int,
+    leto: int = Form(...),
+    akcija: str = Form("placano"),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(csrf_protect),
+) -> RedirectResponse:
+    user, redirect = require_login(request)
+    if redirect:
+        return redirect
+
+    if not is_editor(user):
+        return RedirectResponse(
+            url=f"/zrs-clanarine?leto={leto}",
+            status_code=302,
+        )
+
+    clan = db.query(Clan).filter(Clan.id == clan_id).first()
+    if not clan:
+        return RedirectResponse(
+            url=f"/zrs-clanarine?leto={leto}",
+            status_code=302,
+        )
+
+    zrs_zneski = _zrs_zneski(db)
+    klub_znesek = float(
+        get_clanarina_zneski(db).get(
+            clan.tip_clanstva,
+            0.0,
+        )
+        or 0.0
+    )
+
+    evidenca = (
+        db.query(ZrsClanarina)
+        .filter(
+            ZrsClanarina.clan_id == clan_id,
+            ZrsClanarina.leto == leto,
+        )
+        .first()
+    )
+
+    if not evidenca:
+        evidenca = ZrsClanarina(
+            clan_id=clan_id,
+            leto=leto,
+            zrs_vrsta="Brez ZRS",
+            klub_znesek=klub_znesek,
+            zrs_znesek=0.0,
+        )
+        db.add(evidenca)
+
+    if evidenca.zrs_vrsta not in zrs_zneski:
+        evidenca.zrs_vrsta = "Brez ZRS"
+
+    evidenca.klub_znesek = klub_znesek
+    evidenca.zrs_znesek = float(
+        zrs_zneski.get(evidenca.zrs_vrsta, 0.0)
+        or 0.0
+    )
+
+    placano = akcija == "placano"
+    datum = date.today() if placano else None
+    evidenca.datum_placila = datum
+
+    skupni_znesek = (
+        float(evidenca.klub_znesek or 0.0)
+        + float(evidenca.zrs_znesek or 0.0)
+    )
+
+    clanarina = (
+        db.query(Clanarina)
+        .filter(
+            Clanarina.clan_id == clan_id,
+            Clanarina.leto == leto,
+        )
+        .first()
+    )
+
+    if not clanarina:
+        clanarina = Clanarina(
+            clan_id=clan_id,
+            leto=leto,
+        )
+        db.add(clanarina)
+
+    clanarina.datum_placila = datum
+    clanarina.znesek = f"{skupni_znesek:.2f}"
+    clanarina.opombe = (
+        f"Klub {evidenca.klub_znesek:.2f} EUR + "
+        f"ZRS {evidenca.zrs_znesek:.2f} EUR "
+        f"({evidenca.zrs_vrsta})"
+    )
+
+    db.commit()
+
+    ip = request.client.host if request.client else None
+    log_akcija(
+        db,
+        user.get("uporabnisko_ime") if user else None,
+        (
+            "placilo_clanarine_potrjeno"
+            if placano
+            else "placilo_clanarine_prelicano"
+        ),
+        (
+            f"clan_id={clan_id}, leto={leto}, "
+            f"datum={datum.isoformat() if datum else '-'}, "
+            f"znesek={skupni_znesek:.2f}"
+        ),
+        ip=ip,
+    )
+
+    return RedirectResponse(
+        url=(
+            f"/zrs-clanarine?leto={leto}"
+            f"&placilo={'potrjeno' if placano else 'preklicano'}"
+        ),
+        status_code=302,
+    )
 
 @router.post("/oznaci-vse-nakazano")
 async def oznaci_vse_nakazano(
