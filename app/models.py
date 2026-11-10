@@ -309,6 +309,9 @@ class ClanSprememba(Base):
     )
 
     # Posnetek podatkov, ki jih je član oddal.
+    ime = Column(String, nullable=True)
+    priimek = Column(String, nullable=True)
+    klicni_znak = Column(String, nullable=True)
     naslov_ulica = Column(String, nullable=True)
     naslov_posta = Column(String, nullable=True)
     elektronska_posta = Column(String, nullable=True)

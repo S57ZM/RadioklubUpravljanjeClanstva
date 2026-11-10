@@ -53,6 +53,30 @@
             </thead>
 
             <tbody>
+              {% for naziv, trenutno, predlagano in [
+                ("Ime", c.ime, s.ime),
+                ("Priimek", c.priimek, s.priimek),
+                ("Klicni znak", c.klicni_znak, s.klicni_znak)
+              ] %}
+              <tr>
+                <td>{{ naziv }}</td>
+                <td>{{ trenutno or "—" }}</td>
+                <td>
+                  {% if s.ime is none %}
+                    <span class="text-secondary">
+                      Ni bilo predmet spremembe
+                    </span>
+                  {% elif predlagano != (trenutno or "") %}
+                    <strong class="text-primary">
+                      {{ predlagano or "— (odstranitev)" }}
+                    </strong>
+                  {% else %}
+                    {{ predlagano or "—" }}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+
               <tr>
                 <td>Naslov</td>
                 <td>{{ c.naslov_ulica or "—" }}</td>

@@ -158,6 +158,9 @@ async def prikazi_moje_podatke(
 async def oddaj_moje_podatke(
     request: Request,
     token: str,
+    ime: str = Form(""),
+    priimek: str = Form(""),
+    klicni_znak: str = Form(""),
     naslov_ulica: str = Form(""),
     naslov_posta: str = Form(""),
     elektronska_posta: str = Form(""),
@@ -199,6 +202,9 @@ async def oddaj_moje_podatke(
     podatki_pravilni = dejanje == "pravilni"
 
     if podatki_pravilni:
+        ime = clan.ime or ""
+        priimek = clan.priimek or ""
+        klicni_znak = clan.klicni_znak or ""
         naslov_ulica = clan.naslov_ulica or ""
         naslov_posta = clan.naslov_posta or ""
         elektronska_posta = clan.elektronska_posta or ""
@@ -209,6 +215,9 @@ async def oddaj_moje_podatke(
     # Validacija podatkov, ki jih član lahko spremeni.
     if not podatki_pravilni:
         vneseno = {
+            "ime": ime,
+            "priimek": priimek,
+            "klicni_znak": klicni_znak,
             "naslov_ulica": naslov_ulica,
             "naslov_posta": naslov_posta,
             "elektronska_posta": elektronska_posta,
@@ -218,6 +227,9 @@ async def oddaj_moje_podatke(
         }
 
         polja = {
+            "Ime": (ime, 100),
+            "Priimek": (priimek, 100),
+            "Klicni znak": (klicni_znak, 30),
             "Naslov": (naslov_ulica, 200),
             "Pošta / kraj": (naslov_posta, 100),
             "E-pošta": (elektronska_posta, 254),
@@ -232,6 +244,12 @@ async def oddaj_moje_podatke(
                     request, clan, token, expires_at,
                     f"{naziv} je predolg. Največ {meja} znakov.", vneseno
                 )
+
+        if not ime.strip() or not priimek.strip():
+            return _napaka_obrazca(
+                request, clan, token, expires_at,
+                "Ime in priimek sta obvezna.", vneseno
+            )
 
         email = elektronska_posta.strip()
         if email and (
@@ -248,6 +266,9 @@ async def oddaj_moje_podatke(
     sprememba = ClanSprememba(
         clan_id=clan.id,
         token_id=zapis.id,
+        ime=ime.strip(),
+        priimek=priimek.strip(),
+        klicni_znak=klicni_znak.strip().upper(),
         naslov_ulica=(naslov_ulica.strip() or None),
         naslov_posta=(naslov_posta.strip() or None),
         elektronska_posta=(elektronska_posta.strip().lower() or None),
@@ -362,7 +383,13 @@ async def potrdi_spremembo_podatkov(
             status_code=303,
         )
 
-    # Dovoljena so izključno ta polja.
+    # Starejsi zahtevki nimajo novih osebnih polj.
+    if sprememba.ime is not None:
+        clan.ime = sprememba.ime
+        clan.priimek = sprememba.priimek
+        clan.klicni_znak = sprememba.klicni_znak or None
+
+    # Ostala dovoljena polja.
     clan.naslov_ulica = sprememba.naslov_ulica
     clan.naslov_posta = sprememba.naslov_posta
     clan.elektronska_posta = sprememba.elektronska_posta

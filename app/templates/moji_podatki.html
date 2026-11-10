@@ -78,20 +78,30 @@
                name="csrf_token"
                value="{{ csrf_token(request) }}">
 
-        <div class="mb-3">
-          <label class="form-label">Ime in priimek</label>
-          <input class="form-control readonly-field"
-                 value="{{ clan.ime }} {{ clan.priimek }}"
-                 readonly>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="ime">Ime *</label>
+            <input id="ime" name="ime" class="form-control"
+                   maxlength="100" required
+                   value="{{ vneseno.get('ime', '') if vneseno is defined else (clan.ime or '') }}">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label" for="priimek">Priimek *</label>
+            <input id="priimek" name="priimek" class="form-control"
+                   maxlength="100" required
+                   value="{{ vneseno.get('priimek', '') if vneseno is defined else (clan.priimek or '') }}">
+          </div>
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Klicni znak</label>
-          <input class="form-control readonly-field"
-                 value="{{ clan.klicni_znak or '' }}"
-                 readonly>
+          <label class="form-label" for="klicni_znak">Klicni znak</label>
+          <input id="klicni_znak" name="klicni_znak"
+                 class="form-control text-uppercase"
+                 maxlength="30" placeholder="npr. S57ZM"
+                 value="{{ vneseno.get('klicni_znak', '') if vneseno is defined else (clan.klicni_znak or '') }}">
           <div class="form-text">
-            Za spremembo klicnega znaka se obrnite na klub.
+            Če klicnega znaka nimate, pustite polje prazno.
+            Spremembo mora potrditi administrator.
           </div>
         </div>
 

@@ -5,9 +5,14 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4 class="mb-0"><i class="bi bi-people-fill me-2 text-primary"></i>Seznam članov</h4>
   {% if is_editor %}
-  <a href="/clani/nov" class="btn btn-success btn-sm">
-    <i class="bi bi-person-plus-fill me-1"></i>Dodaj člana
-  </a>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="/admin/spremembe-podatkov" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-clipboard-check me-1"></i>Potrjevanje podatkov
+    </a>
+    <a href="/clani/nov" class="btn btn-success btn-sm">
+      <i class="bi bi-person-plus-fill me-1"></i>Dodaj člana
+    </a>
+  </div>
   {% endif %}
 </div>
 
